@@ -39,3 +39,40 @@ def signup():
     return jsonify({
         "message": "User created successfully"
     }), 201
+
+@auth.route('/login', methods=['POST'])
+def login():
+
+    data = request.json
+
+    email = data.get('email')
+    password = data.get('password')
+
+    # Find user by email
+    user = db.users.find_one({
+        "email": email
+    })
+
+    # User not found
+    if not user:
+        return jsonify({
+            "error": "User not found"
+        }), 404
+
+    stored_password = user['password']
+
+    # Verify password
+    password_match = bcrypt.checkpw(
+        password.encode('utf-8'),
+        stored_password.encode('utf-8')
+    )
+
+    # Wrong password
+    if not password_match:
+        return jsonify({
+            "error": "Invalid password"
+        }), 401
+
+    return jsonify({
+        "message": "Login successful"
+    }), 200

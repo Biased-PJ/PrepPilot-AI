@@ -3,6 +3,7 @@ from config import db
 from middleware.auth_middleware import token_required
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 problems = Blueprint('problems', __name__)
 
@@ -119,4 +120,65 @@ def analytics():
 
         "weak_topic": weak_topic
 
+    }), 200
+
+@problems.route('/generate-chart', methods=['GET'])
+@token_required
+def generate_chart():
+
+    user_email = request.user['email']
+
+    problems_data = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            },
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    if len(problems_data) == 0:
+
+        return jsonify({
+            "message": "No problems found"
+        }), 404
+
+    # Create DataFrame
+    df = pd.DataFrame(problems_data)
+
+    # Topic counts
+    topic_counts = df['topic'].value_counts()
+
+    # Create chart
+    plt.figure(figsize=(8, 5))
+
+    topic_counts.plot(kind='bar')
+
+    plt.title('Topic Distribution')
+
+    plt.xlabel('Topics')
+
+    plt.ylabel('Problems Solved')
+
+    # Save chart
+    safe_email = user_email.replace("@", "_").replace(".", "_")
+
+    import os
+
+    static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+    static_dir = os.path.abspath(static_dir)
+
+    os.makedirs(static_dir, exist_ok=True)
+
+    chart_path = os.path.join(static_dir, f"{safe_email}_topic_chart.png")
+
+    plt.savefig(chart_path)
+
+    plt.close()
+
+    return jsonify({
+        "message": "Chart generated successfully",
+        "chart_path": chart_path
     }), 200

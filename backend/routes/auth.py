@@ -75,12 +75,17 @@ def login():
             "error": "Invalid password"
         }), 401
 
-    token = jwt.encode({
-    "email": user['email'],
-    "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
-    },
-    current_app.config['SECRET_KEY'],
-    algorithm="HS256")
+    print(current_app.config['SECRET_KEY'])
+
+    token = jwt.encode(
+        {
+            "email": user['email'],
+            "exp": datetime.datetime.now(datetime.timezone.utc)
+                  + datetime.timedelta(days=1)
+        },
+        current_app.config['SECRET_KEY'],
+        algorithm="HS256"
+    )
 
     return jsonify({
         "message": "Login successful",

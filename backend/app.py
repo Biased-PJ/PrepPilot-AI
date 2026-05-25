@@ -3,12 +3,14 @@ from flask_cors import CORS
 from config import db
 from routes.auth import auth
 from middleware.auth_middleware import token_required
+from routes.problems import problems
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'preppilot_super_secret'
 CORS(app)
 
 app.register_blueprint(auth)
+app.register_blueprint(problems)
 
 @app.route('/')
 def home():

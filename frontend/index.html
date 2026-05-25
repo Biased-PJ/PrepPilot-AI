@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <title>PrepPilot AI</title>
+  </head>
+  <body>
+    <h1>PrepPilot AI</h1>
+
+    <button onclick="testBackend()">Test Backend</button>
+
+    <p id="output"></p>
+
+    <script>
+      async function testBackend() {
+        const response = await fetch("http://127.0.0.1:5000/");
+
+        const data = await response.json();
+
+        document.getElementById("output").innerText = data.message;
+      }
+    </script>
+  </body>
+</html>

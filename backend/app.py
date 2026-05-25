@@ -4,6 +4,7 @@ from config import db
 from routes.auth import auth
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'preppilot_super_secret'
 CORS(app)
 
 app.register_blueprint(auth)

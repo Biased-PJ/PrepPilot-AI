@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import db
 import bcrypt
+import jwt
+import datetime
 
 auth = Blueprint('auth', __name__)
 
@@ -73,6 +75,14 @@ def login():
             "error": "Invalid password"
         }), 401
 
+    token = jwt.encode({
+    "email": user['email'],
+    "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
+    },
+    current_app.config['SECRET_KEY'],
+    algorithm="HS256")
+
     return jsonify({
-        "message": "Login successful"
+        "message": "Login successful",
+        "token": token
     }), 200

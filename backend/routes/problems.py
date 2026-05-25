@@ -32,3 +32,22 @@ def add_problem():
     return jsonify({
         "message": "Problem added successfully"
     }), 201
+
+@problems.route('/my-problems', methods=['GET'])
+@token_required
+def get_my_problems():
+
+    user_email = request.user['email']
+
+    problems_list = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            },
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    return jsonify(problems_list), 200

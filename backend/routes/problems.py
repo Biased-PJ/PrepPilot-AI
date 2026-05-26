@@ -4,14 +4,26 @@ import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+import json
 from datetime import datetime
 from bson import ObjectId
-from bs4 import BeautifulSoup
 from flask import Blueprint, request, jsonify
 
 from config import db
 from middleware.auth_middleware import token_required
+
+# =========================================================
+# SERIALIZER
+# =========================================================
+
+def serialize_doc(doc):
+
+    if not doc:
+        return None
+
+    doc["_id"] = str(doc["_id"])
+
+    return doc
 
 problems = Blueprint('problems', __name__)
 
@@ -112,17 +124,85 @@ def add_question():
 @token_required
 def get_all_questions():
 
+    page = int(request.args.get('page', 1))
+
+    limit = int(request.args.get('limit', 20))
+
+    skip = (page - 1) * limit
+
+    query = {}
+
+    # =====================================================
+    # FILTERS
+    # =====================================================
+
+    difficulty = request.args.get('difficulty')
+
+    topic = request.args.get('topic')
+
+    platform = request.args.get('platform')
+
+    search = request.args.get('search')
+
+    if difficulty:
+        query["difficulty"] = difficulty
+
+    if topic:
+        query["topic"] = topic
+
+    if platform:
+        query["platform"] = platform
+
+    if search:
+
+        query["title"] = {
+            "$regex": search,
+            "$options": "i"
+        }
+
+    total_questions = db.questions.count_documents(query)
+
+    questions_cursor = db.questions.find(query) \
+        .skip(skip) \
+        .limit(limit)
+
     questions = []
 
-    for q in db.questions.find():
+    for q in questions_cursor:
 
-        q['_id'] = str(q['_id'])
+        questions.append({
 
-        questions.append(q)
+            "question_id": str(q["_id"]),
+
+            "title": q.get("title"),
+
+            "topic": q.get("topic"),
+
+            "difficulty": q.get("difficulty"),
+
+            "platform": q.get("platform"),
+
+            "tags": q.get("tags", []),
+
+            "acceptance_rate":
+                q.get("acceptance_rate"),
+
+            "paid_only":
+                q.get("paid_only", False),
+
+            "link": q.get("link")
+        })
 
     return jsonify({
 
-        "total_questions": len(questions),
+        "page": page,
+
+        "limit": limit,
+
+        "total_questions": total_questions,
+
+        "total_pages":
+            math.ceil(total_questions / limit),
 
         "questions": questions
 
@@ -352,11 +432,54 @@ def recommendations():
 
     )
 
+    # =====================================================
+    # NEW USER CASE
+    # =====================================================
+
     if len(progress_data) == 0:
 
+        starter_questions = list(
+
+            db.questions.find({
+
+                "difficulty": {
+                    "$in": ["EASY", "Easy"]
+                }
+
+            }).limit(10)
+
+        )
+
+        recommendations = []
+
+        for q in starter_questions:
+
+            recommendations.append({
+
+                "question_id": str(q['_id']),
+
+                "title": q['title'],
+
+                "topic": q.get('topic', 'General'),
+
+                "difficulty": q['difficulty'],
+
+                "platform": q['platform'],
+
+                "link": q['link']
+            })
+
         return jsonify({
-            "message": "No solved questions found"
-        }), 404
+
+            "message": "Starter recommendations",
+
+            "recommendations": recommendations
+
+        }), 200
+
+    # =====================================================
+    # SOLVED QUESTIONS
+    # =====================================================
 
     solved_question_ids = []
 
@@ -374,16 +497,26 @@ def recommendations():
 
         if question:
 
-            topic = question['topic']
+            topic = question.get("topic", "General")
 
             topic_frequency[topic] = (
+
                 topic_frequency.get(topic, 0) + 1
+
             )
+
+    # =====================================================
+    # FIND WEAK TOPIC
+    # =====================================================
 
     weak_topic = min(
         topic_frequency,
         key=topic_frequency.get
     )
+
+    # =====================================================
+    # RECOMMEND UNSOLVED QUESTIONS
+    # =====================================================
 
     recommended_questions = list(
 
@@ -395,19 +528,21 @@ def recommendations():
                 "$nin": solved_question_ids
             }
 
-        }).limit(5)
+        }).limit(10)
 
     )
 
-    final_questions = []
+    recommendations = []
 
     for q in recommended_questions:
 
-        final_questions.append({
+        recommendations.append({
 
             "question_id": str(q['_id']),
 
             "title": q['title'],
+
+            "topic": q.get('topic', 'General'),
 
             "difficulty": q['difficulty'],
 
@@ -420,7 +555,9 @@ def recommendations():
 
         "weak_topic": weak_topic,
 
-        "recommendations": final_questions
+        "total_recommendations": len(recommendations),
+
+        "recommendations": recommendations
 
     }), 200
 
@@ -436,50 +573,49 @@ def streak():
 
     progress_data = list(
 
-        db.user_progress.find({
-            "user_email": user_email
-        })
+        db.user_progress.find(
+            {
+                "user_email": user_email
+            }
+        ).sort("solved_at", 1)
 
     )
 
     if len(progress_data) == 0:
 
         return jsonify({
-            "message": "No problems found"
-        }), 404
+            "current_streak": 0,
+            "active_days": 0
+        }), 200
 
-    solve_dates = []
+    solve_dates = sorted(list(set([
 
-    for progress in progress_data:
+        progress['solved_at'].date()
 
-        solve_dates.append(
-            progress['solved_at'].date()
-        )
+        for progress in progress_data
 
-    unique_dates = sorted(
-        list(set(solve_dates))
-    )
+        if progress.get("solved_at")
 
-    if len(unique_dates) == 0:
+    ])))
+
+    if len(solve_dates) == 0:
 
         return jsonify({
-            "message": "No solved dates found"
-        }), 404
+            "current_streak": 0,
+            "active_days": 0
+        }), 200
 
     current_streak = 1
 
-    for i in range(
-        len(unique_dates) - 1,
-        0,
-        -1
-    ):
+    for i in range(len(solve_dates) - 1, 0, -1):
 
         diff = (
-            unique_dates[i]
-            - unique_dates[i - 1]
+            solve_dates[i]
+            - solve_dates[i - 1]
         ).days
 
         if diff == 1:
+
             current_streak += 1
 
         else:
@@ -489,7 +625,9 @@ def streak():
 
         "current_streak": current_streak,
 
-        "active_days": len(unique_dates)
+        "active_days": len(solve_dates),
+
+        "last_solved_date": str(solve_dates[-1])
 
     }), 200
 
@@ -511,14 +649,36 @@ def readiness_score():
 
     )
 
+    # =====================================================
+    # NO PROBLEMS CASE
+    # =====================================================
+
     if len(progress_data) == 0:
 
         return jsonify({
-            "message": "No problems found"
-        }), 404
+
+            "interview_readiness_score": 0,
+
+            "readiness_level": "Beginner",
+
+            "stats": {
+
+                "total_problems": 0,
+
+                "easy": 0,
+
+                "medium": 0,
+
+                "hard": 0,
+
+                "topics_covered": 0
+            }
+
+        }), 200
 
     total_problems = len(progress_data)
 
+    easy_count = 0
     medium_count = 0
     hard_count = 0
 
@@ -530,30 +690,57 @@ def readiness_score():
             "_id": progress['question_id']
         })
 
-        if question:
+        if not question:
+            continue
 
-            topics.add(question['topic'])
+        difficulty = str(
+            question.get('difficulty', '')
+        ).upper()
 
-            if question['difficulty'] == 'Medium':
-                medium_count += 1
+        topics.add(
+            question.get('topic', 'General')
+        )
 
-            if question['difficulty'] == 'Hard':
-                hard_count += 1
+        if difficulty == "EASY":
+            easy_count += 1
 
+        elif difficulty == "MEDIUM":
+            medium_count += 1
+
+        elif difficulty == "HARD":
+            hard_count += 1
+
+    # =====================================================
+    # SCORING LOGIC
+    # =====================================================
+
+    # 40 Marks
     problem_score = min(
-        math.ceil((total_problems / 400) * 30),
-        30
+
+        math.ceil(
+            (total_problems / 400) * 40
+        ),
+
+        40
     )
 
+    # 35 Marks
     difficulty_score = min(
-        math.ceil((medium_count * 0.2)
-        + (hard_count * 0.3)),
-        30
+
+        math.ceil(
+            (medium_count * 0.15)
+            + (hard_count * 0.35)
+        ),
+
+        35
     )
 
+    # 25 Marks
     topic_score = min(
+
         len(topics) * 2,
-        30
+
+        25
     )
 
     final_score = (
@@ -562,19 +749,50 @@ def readiness_score():
         + topic_score
     )
 
+    final_score = min(final_score, 100)
+
+    # =====================================================
+    # READINESS LEVEL
+    # =====================================================
+
     readiness_level = "Beginner"
 
-    if final_score >= 40:
+    if final_score >= 35:
         readiness_level = "Intermediate"
 
-    if final_score >= 70:
+    if final_score >= 60:
+        readiness_level = "Advanced"
+
+    if final_score >= 80:
         readiness_level = "Interview Ready"
 
     return jsonify({
 
         "interview_readiness_score": final_score,
 
-        "readiness_level": readiness_level
+        "readiness_level": readiness_level,
+
+        "stats": {
+
+            "total_problems": total_problems,
+
+            "easy": easy_count,
+
+            "medium": medium_count,
+
+            "hard": hard_count,
+
+            "topics_covered": len(topics)
+        },
+
+        "score_breakdown": {
+
+            "problem_score": problem_score,
+
+            "difficulty_score": difficulty_score,
+
+            "topic_score": topic_score
+        }
 
     }), 200
 
@@ -627,205 +845,6 @@ def company_questions(company):
         "total_questions": len(final_questions),
 
         "questions": final_questions
-
-    }), 200
-
-# =========================================================
-# SCRAPE GFG ARRAY QUESTIONS
-# =========================================================
-
-@problems.route('/scrape-gfg-arrays', methods=['GET'])
-@token_required
-def scrape_gfg_arrays():
-
-    url = (
-        "https://www.geeksforgeeks.org/"
-        "top-50-array-coding-problems-for-interviews/"
-    )
-
-    response = requests.get(url)
-
-    if response.status_code != 200:
-
-        return jsonify({
-            "error": "Failed to fetch webpage"
-        }), 500
-
-    soup = BeautifulSoup(
-        response.text,
-        'html.parser'
-    )
-
-    links = soup.find_all('a')
-
-    inserted_questions = []
-
-    added_titles = set()
-
-    keywords = [
-        "array",
-        "subarray",
-        "sum",
-        "search",
-        "sort",
-        "matrix",
-        "rotation",
-        "pair",
-        "duplicate",
-        "majority"
-    ]
-
-    for link in links:
-
-        title = link.get_text(strip=True)
-
-        href = link.get('href')
-
-        if (
-            title
-            and href
-            and len(title) > 8
-            and "geeksforgeeks.org" in href
-            and any(
-                keyword in title.lower()
-                for keyword in keywords
-            )
-        ):
-
-            if title in added_titles:
-                continue
-
-            added_titles.add(title)
-
-            slug = (
-                title
-                .lower()
-                .replace(' ', '-')
-            )
-
-            existing_question = db.questions.find_one({
-                "slug": slug
-            })
-
-            if existing_question:
-                continue
-
-            question = {
-
-                "title": title,
-
-                "slug": slug,
-
-                "topic": "Arrays",
-
-                "difficulty": "Unknown",
-
-                "platform": "GeeksforGeeks",
-
-                "source": "GeeksforGeeks",
-
-                "link": href,
-
-                "companies": [],
-
-                "tags": ["array"],
-
-                "created_at": datetime.utcnow()
-            }
-
-            result = db.questions.insert_one(question)
-
-            inserted_questions.append({
-
-                "question_id": str(result.inserted_id),
-
-                "title": title,
-
-                "link": href
-            })
-
-        if len(inserted_questions) >= 15:
-            break
-
-    return jsonify({
-
-        "message": "Questions scraped successfully",
-
-        "total_questions": len(inserted_questions),
-
-        "questions": inserted_questions
-
-    }), 200
-
-# =========================================================
-# SCRAPE GFG ARTICLES
-# =========================================================
-
-@problems.route('/scrape-gfg-articles', methods=['GET'])
-@token_required
-def scrape_gfg_articles():
-
-    url = "https://www.geeksforgeeks.org/data-structures/"
-
-    response = requests.get(url)
-
-    if response.status_code != 200:
-
-        return jsonify({
-            "error": "Failed to fetch webpage"
-        }), 500
-
-    soup = BeautifulSoup(
-        response.text,
-        'html.parser'
-    )
-
-    headings = soup.find_all('h2')
-
-    articles = []
-
-    for heading in headings[:10]:
-
-        title = heading.get_text(strip=True)
-
-        if len(title) > 0:
-
-            existing_article = db.articles.find_one({
-                "title": title
-            })
-
-            if existing_article:
-                continue
-
-            article = {
-
-                "title": title,
-
-                "source": "GeeksforGeeks",
-
-                "topic": "DSA",
-
-                "created_at": datetime.utcnow()
-            }
-
-            db.articles.insert_one(article)
-
-            articles.append({
-
-                "title": article["title"],
-
-                "source": article["source"],
-
-                "topic": article["topic"]
-            })
-
-    return jsonify({
-
-        "message": "Articles scraped successfully",
-
-        "total_articles": len(articles),
-
-        "articles": articles
 
     }), 200
 
@@ -910,7 +929,8 @@ def generate_chart():
 
         "message": "Chart generated successfully",
 
-        "chart_path": chart_path
+        "chart_path":
+            f"/static/{safe_email}_topic_chart.png"
 
     }), 200
 
@@ -919,13 +939,9 @@ def generate_chart():
 # IMPORT LEETCODE QUESTIONS
 # =========================================================
 
-import json
-
 @problems.route('/import-leetcode-questions', methods=['GET'])
 @token_required
 def import_leetcode_questions():
-
-    import json
 
     url = "https://leetcode.com/graphql"
 
@@ -1173,4 +1189,138 @@ def import_leetcode_questions():
 
         "database_total":
             db.questions.count_documents({})
+    }), 200
+
+# =========================================================
+# SEARCH QUESTIONS
+# =========================================================
+
+@problems.route('/search-questions', methods=['GET'])
+@token_required
+def search_questions():
+
+    keyword = request.args.get('q', '')
+
+    if keyword == '':
+
+        return jsonify({
+            "error": "Search query required"
+        }), 400
+
+    questions = list(
+
+        db.questions.find({
+
+            "$or": [
+
+                {
+                    "title": {
+                        "$regex": keyword,
+                        "$options": "i"
+                    }
+                },
+
+                {
+                    "topic": {
+                        "$regex": keyword,
+                        "$options": "i"
+                    }
+                },
+
+                {
+                    "tags": {
+                        "$regex": keyword,
+                        "$options": "i"
+                    }
+                }
+            ]
+
+        }).limit(50)
+
+    )
+
+    results = []
+
+    for q in questions:
+
+        results.append({
+
+            "question_id": str(q["_id"]),
+
+            "title": q.get("title"),
+
+            "topic": q.get("topic"),
+
+            "difficulty": q.get("difficulty"),
+
+            "platform": q.get("platform"),
+
+            "link": q.get("link")
+        })
+
+    return jsonify({
+
+        "total_results": len(results),
+
+        "questions": results
+
+    }), 200
+
+# =========================================================
+# RANDOM QUESTION
+# =========================================================
+
+@problems.route('/random-question', methods=['GET'])
+@token_required
+def random_question():
+
+    pipeline = [
+        {"$sample": {"size": 1}}
+    ]
+
+    question = list(
+        db.questions.aggregate(pipeline)
+    )
+
+    if len(question) == 0:
+
+        return jsonify({
+            "error": "No questions found"
+        }), 404
+
+    q = question[0]
+
+    return jsonify({
+
+        "question_id": str(q["_id"]),
+
+        "title": q.get("title"),
+
+        "topic": q.get("topic"),
+
+        "difficulty": q.get("difficulty"),
+
+        "platform": q.get("platform"),
+
+        "link": q.get("link")
+    }), 200
+
+# =========================================================
+# GET ALL TOPICS
+# =========================================================
+
+@problems.route('/topics', methods=['GET'])
+@token_required
+def get_topics():
+
+    topics = db.questions.distinct("topic")
+
+    topics = sorted(topics)
+
+    return jsonify({
+
+        "total_topics": len(topics),
+
+        "topics": topics
+
     }), 200

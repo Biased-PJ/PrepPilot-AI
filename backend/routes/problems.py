@@ -446,3 +446,167 @@ def streak():
             consistency_percentage
 
     }), 200
+
+@problems.route('/readiness-score', methods=['GET'])
+@token_required
+def readiness_score():
+
+    user_email = request.user['email']
+
+    problems_data = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            },
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    if len(problems_data) == 0:
+
+        return jsonify({
+            "message": "No problems found"
+        }), 404
+
+    # Create DataFrame
+    df = pd.DataFrame(problems_data)
+
+    # -------------------------
+    # 1. Problem Count Score
+    # -------------------------
+
+    total_problems = len(df)
+
+    problem_score = min(
+        (total_problems / 100) * 30,
+        30
+    )
+
+    # -------------------------
+    # 2. Difficulty Score
+    # -------------------------
+
+    difficulty_distribution = (
+        df['difficulty']
+        .value_counts()
+        .to_dict()
+    )
+
+    medium_count = (
+        difficulty_distribution.get("Medium", 0)
+    )
+
+    hard_count = (
+        difficulty_distribution.get("Hard", 0)
+    )
+
+    difficulty_score = min(
+        (medium_count * 2)
+        + (hard_count * 3),
+        25
+    )
+
+    # -------------------------
+    # 3. Topic Coverage Score
+    # -------------------------
+
+    unique_topics = (
+        df['topic']
+        .nunique()
+    )
+
+    topic_score = min(
+        unique_topics * 2,
+        20
+    )
+
+    # -------------------------
+    # 4. Consistency Score
+    # -------------------------
+
+    consistency_score = 10
+
+    solve_dates = []
+
+    for problem in problems_data:
+
+        if 'solved_at' in problem:
+
+            solve_dates.append(
+                problem['solved_at'].date()
+            )
+
+    if len(solve_dates) > 0:
+
+        unique_dates = sorted(
+            list(set(solve_dates))
+        )
+
+        total_active_days = len(unique_dates)
+
+        first_day = unique_dates[0]
+
+        last_day = unique_dates[-1]
+
+        total_days = (
+            last_day - first_day
+        ).days + 1
+
+        consistency_percentage = (
+            total_active_days / total_days
+        ) * 100
+
+        consistency_score = min(
+            consistency_percentage / 4,
+            25
+        )
+
+    # -------------------------
+    # Final Score
+    # -------------------------
+
+    final_score = round(
+
+        problem_score
+        + difficulty_score
+        + topic_score
+        + consistency_score,
+
+        2
+    )
+
+    # Readiness level
+    readiness_level = "Beginner"
+
+    if final_score >= 40:
+        readiness_level = "Intermediate"
+
+    if final_score >= 70:
+        readiness_level = "Interview Ready"
+
+    return jsonify({
+
+        "interview_readiness_score":
+            final_score,
+
+        "readiness_level":
+            readiness_level,
+
+        "breakdown": {
+
+            "problem_score":
+                round(problem_score, 2),
+
+            "difficulty_score":
+                round(difficulty_score, 2),
+
+            "topic_score":
+                round(topic_score, 2),
+
+            "consistency_score":
+                round(consistency_score, 2)
+        }
+
+    }), 200

@@ -32,15 +32,57 @@ problems = Blueprint('problems', __name__)
 # =========================================================
 
 try:
-    db.questions.create_index("slug", unique=True)
 
-    db.user_progress.create_index([
-        ("user_email", 1),
-        ("question_id", 1)
+    # =====================================================
+    # QUESTIONS COLLECTION INDEXES
+    # =====================================================
+
+    db.questions.create_index(
+        "slug",
+        unique=True
+    )
+
+    db.questions.create_index("difficulty")
+
+    db.questions.create_index("topic")
+
+    db.questions.create_index("platform")
+
+    db.questions.create_index("tags")
+
+    db.questions.create_index("companies")
+
+    db.questions.create_index("created_at")
+
+    db.questions.create_index([
+        ("title", "text"),
+        ("tags", "text"),
+        ("topic", "text")
     ])
 
+    # =====================================================
+    # USER PROGRESS INDEXES
+    # =====================================================
+
+    db.user_progress.create_index(
+        [
+            ("user_email", 1),
+            ("question_id", 1)
+        ],
+        unique=True
+    )
+
+    db.user_progress.create_index(
+        "user_email"
+    )
+
+    db.user_progress.create_index(
+        "solved_at"
+    )
+
 except Exception as e:
-    print(e)
+
+    print("Index creation error:", e)
 
 # =========================================================
 # TEST ROUTE
@@ -91,7 +133,10 @@ def add_question():
 
         "topic": data.get('topic', 'General'),
 
-        "difficulty": data.get('difficulty', 'Easy'),
+        "difficulty": data.get(
+            'difficulty',
+            'EASY'
+        ).upper(),
 
         "platform": data.get('platform', 'LeetCode'),
 
@@ -126,7 +171,10 @@ def get_all_questions():
 
     page = int(request.args.get('page', 1))
 
-    limit = int(request.args.get('limit', 20))
+    limit = min(
+        int(request.args.get('limit', 20)),
+        100
+    )
 
     skip = (page - 1) * limit
 
@@ -162,9 +210,22 @@ def get_all_questions():
 
     total_questions = db.questions.count_documents(query)
 
-    questions_cursor = db.questions.find(query) \
-        .skip(skip) \
-        .limit(limit)
+    questions_cursor = db.questions.find(
+
+        query,
+
+        {
+            "title": 1,
+            "topic": 1,
+            "difficulty": 1,
+            "platform": 1,
+            "tags": 1,
+            "acceptance_rate": 1,
+            "paid_only": 1,
+            "link": 1
+        }
+
+    ).skip(skip).limit(limit)
 
     questions = []
 
@@ -809,8 +870,10 @@ def company_questions(company):
         db.questions.find({
 
             "companies": {
-                "$regex": company,
-                "$options": "i"
+                "$elemMatch": {
+                    "$regex": company,
+                    "$options": "i"
+                }
             }
 
         })
@@ -1211,29 +1274,9 @@ def search_questions():
 
         db.questions.find({
 
-            "$or": [
-
-                {
-                    "title": {
-                        "$regex": keyword,
-                        "$options": "i"
-                    }
-                },
-
-                {
-                    "topic": {
-                        "$regex": keyword,
-                        "$options": "i"
-                    }
-                },
-
-                {
-                    "tags": {
-                        "$regex": keyword,
-                        "$options": "i"
-                    }
-                }
-            ]
+            "$text": {
+                "$search": keyword
+            }
 
         }).limit(50)
 
@@ -1322,5 +1365,181 @@ def get_topics():
         "total_topics": len(topics),
 
         "topics": topics
+
+    }), 200
+
+@problems.route('/unsolve-question/<question_id>', methods=['DELETE'])
+@token_required
+def unsolve_question(question_id):
+
+    try:
+        object_id = ObjectId(question_id)
+
+    except:
+
+        return jsonify({
+            "error": "Invalid question id"
+        }), 400
+
+    result = db.user_progress.delete_one({
+
+        "user_email": request.user['email'],
+
+        "question_id": object_id
+    })
+
+    if result.deleted_count == 0:
+
+        return jsonify({
+            "message": "Progress not found"
+        }), 404
+
+    return jsonify({
+        "message": "Question removed from solved"
+    }), 200
+
+@problems.route('/daily-question', methods=['GET'])
+@token_required
+def daily_question():
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+    seed = sum(ord(c) for c in today)
+
+    total = db.questions.count_documents({})
+
+    if total == 0:
+
+        return jsonify({
+            "error": "No questions found"
+        }), 404
+
+    index = seed % total
+
+    question = list(
+        db.questions.find().skip(index).limit(1)
+    )
+
+    if len(question) == 0:
+
+        return jsonify({
+            "error": "Question not found"
+        }), 404
+
+    question = question[0]
+
+    return jsonify({
+
+        "question_id": str(question["_id"]),
+
+        "title": question["title"],
+
+        "difficulty": question["difficulty"],
+
+        "topic": question["topic"],
+
+        "link": question["link"]
+
+    }), 200
+
+# =========================================================
+# LEADERBOARD
+# =========================================================
+
+@problems.route('/leaderboard', methods=['GET'])
+@token_required
+def leaderboard():
+
+    pipeline = [
+
+        {
+            "$group": {
+
+                "_id": "$user_email",
+
+                "problems_solved": {
+                    "$sum": 1
+                }
+            }
+        },
+
+        {
+            "$sort": {
+                "problems_solved": -1
+            }
+        },
+
+        {
+            "$limit": 10
+        }
+    ]
+
+    leaderboard = list(
+        db.user_progress.aggregate(pipeline)
+    )
+
+    results = []
+
+    rank = 1
+
+    for user in leaderboard:
+
+        results.append({
+
+            "rank": rank,
+
+            "user_email": user["_id"],
+
+            "problems_solved":
+                user["problems_solved"]
+        })
+
+        rank += 1
+
+    return jsonify({
+
+        "leaderboard": results
+
+    }), 200
+
+# =========================================================
+# TOPIC PROGRESS
+# =========================================================
+
+@problems.route('/topic-progress', methods=['GET'])
+@token_required
+def topic_progress():
+
+    user_email = request.user['email']
+
+    progress_data = list(
+
+        db.user_progress.find({
+            "user_email": user_email
+        })
+
+    )
+
+    stats = {}
+
+    for progress in progress_data:
+
+        question = db.questions.find_one({
+            "_id": progress['question_id']
+        })
+
+        if not question:
+            continue
+
+        topic = question.get(
+            "topic",
+            "General"
+        )
+
+        stats[topic] = stats.get(topic, 0) + 1
+
+    return jsonify({
+
+        "topics_solved": stats
 
     }), 200

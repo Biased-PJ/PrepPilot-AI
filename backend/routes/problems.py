@@ -614,3 +614,56 @@ def readiness_score():
         }
 
     }), 200
+
+@problems.route('/add-company-question', methods=['POST'])
+@token_required
+def add_company_question():
+
+    data = request.json
+
+    question = {
+
+        "company": data.get('company'),
+
+        "title": data.get('title'),
+
+        "topic": data.get('topic'),
+
+        "difficulty": data.get('difficulty'),
+
+        "platform": data.get('platform'),
+
+        "link": data.get('link')
+    }
+
+    db.company_questions.insert_one(question)
+
+    return jsonify({
+        "message": "Company question added successfully"
+    }), 201
+
+@problems.route(
+    '/company-questions/<company>',
+    methods=['GET']
+)
+@token_required
+def get_company_questions(company):
+
+    questions = list(
+
+        db.company_questions.find(
+
+            {
+                "company": {
+                    "$regex": f"^{company}$",
+                    "$options": "i"
+                }
+            },
+
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    return jsonify(questions), 200

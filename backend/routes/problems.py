@@ -4,6 +4,7 @@ from middleware.auth_middleware import token_required
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 problems = Blueprint('problems', __name__)
 
@@ -27,7 +28,9 @@ def add_problem():
 
         "time_taken": data.get('time_taken'),
 
-        "status": data.get('status')
+        "status": data.get('status'),
+
+        "solved_at": datetime.utcnow()
     }
 
     db.problems.insert_one(problem)
@@ -352,5 +355,94 @@ def recommendations():
         "average_solving_time": round(float(average_time), 2),
 
         "message": message
+
+    }), 200
+
+@problems.route('/streak', methods=['GET'])
+@token_required
+def streak():
+
+    user_email = request.user['email']
+
+    problems_data = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            }
+        )
+    )
+
+    if len(problems_data) == 0:
+
+        return jsonify({
+            "message": "No problems found"
+        }), 404
+
+    # Extract solve dates
+    solve_dates = []
+
+    for problem in problems_data:
+
+        if 'solved_at' in problem:
+
+            solve_dates.append(
+                problem['solved_at'].date()
+            )
+
+    # Remove duplicates
+    unique_dates = sorted(
+        list(set(solve_dates))
+    )
+
+    if len(unique_dates) == 0:
+
+        return jsonify({
+            "message": "No timestamped problems found"
+        }), 404
+
+    # Calculate streak
+    current_streak = 1
+
+    for i in range(
+        len(unique_dates) - 1,
+        0,
+        -1
+    ):
+
+        diff = (
+            unique_dates[i]
+            - unique_dates[i - 1]
+        ).days
+
+        if diff == 1:
+            current_streak += 1
+
+        else:
+            break
+
+    # Consistency score
+    total_active_days = len(unique_dates)
+
+    first_day = unique_dates[0]
+
+    last_day = unique_dates[-1]
+
+    total_days = (
+        last_day - first_day
+    ).days + 1
+
+    consistency_percentage = round(
+        (total_active_days / total_days) * 100,
+        2
+    )
+
+    return jsonify({
+
+        "current_streak": current_streak,
+
+        "active_days": total_active_days,
+
+        "consistency_percentage":
+            consistency_percentage
 
     }), 200

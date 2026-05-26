@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+import math
+from math import ceil
 
 problems = Blueprint('problems', __name__)
 
@@ -480,7 +482,7 @@ def readiness_score():
     total_problems = len(df)
 
     problem_score = min(
-        (total_problems / 100) * 30,
+        math.ceil((total_problems / 400) * 30),
         30
     )
 
@@ -503,9 +505,9 @@ def readiness_score():
     )
 
     difficulty_score = min(
-        (medium_count * 2)
-        + (hard_count * 3),
-        25
+        math.ceil((medium_count * 0.2)
+        + (hard_count * 0.3)),
+        30
     )
 
     # -------------------------
@@ -517,16 +519,16 @@ def readiness_score():
         .nunique()
     )
 
-    topic_score = min(
-        unique_topics * 2,
-        20
-    )
+    topic_score = math.ceil(min(
+        unique_topics / 2,
+        30
+    ))
 
     # -------------------------
     # 4. Consistency Score
     # -------------------------
 
-    consistency_score = 10
+    consistency_score = 0
 
     solve_dates = []
 
@@ -558,23 +560,25 @@ def readiness_score():
             total_active_days / total_days
         ) * 100
 
-        consistency_score = min(
-            consistency_percentage / 4,
-            25
-        )
+        if (
+          total_problems > 100
+        ):
+            consistency_score = math.ceil(min(
+                consistency_percentage / 10, 10
+            ))
+
+        else:
+            consistency_score = math.ceil(consistency_percentage / 10)
 
     # -------------------------
     # Final Score
     # -------------------------
 
-    final_score = round(
-
+    final_score = math.ceil(
         problem_score
         + difficulty_score
         + topic_score
-        + consistency_score,
-
-        2
+        + consistency_score
     )
 
     # Readiness level
@@ -597,16 +601,16 @@ def readiness_score():
         "breakdown": {
 
             "problem_score":
-                round(problem_score, 2),
+                math.ceil(problem_score),
 
             "difficulty_score":
-                round(difficulty_score, 2),
+                math.ceil(difficulty_score),
 
             "topic_score":
-                round(topic_score, 2),
+                math.ceil(topic_score),
 
             "consistency_score":
-                round(consistency_score, 2)
+                math.ceil(consistency_score)
         }
 
     }), 200

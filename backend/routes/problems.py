@@ -266,3 +266,91 @@ def dashboard():
         "chart_path": chart_path
 
     }), 200
+
+@problems.route('/recommendations', methods=['GET'])
+@token_required
+def recommendations():
+
+    user_email = request.user['email']
+
+    # Fetch user problems
+    problems_data = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            },
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    if len(problems_data) == 0:
+
+        return jsonify({
+            "message": "No problems found"
+        }), 404
+
+    # Create DataFrame
+    df = pd.DataFrame(problems_data)
+
+    # Topic distribution
+    topic_distribution = (
+        df['topic']
+        .value_counts()
+        .to_dict()
+    )
+
+    # Weak topic
+    weak_topic = min(
+        topic_distribution,
+        key=topic_distribution.get
+    )
+
+    # Difficulty distribution
+    difficulty_distribution = (
+        df['difficulty']
+        .value_counts()
+        .to_dict()
+    )
+
+    # Determine next difficulty
+    recommended_difficulty = "Easy"
+
+    if difficulty_distribution.get("Easy", 0) >= 5:
+        recommended_difficulty = "Medium"
+
+    if difficulty_distribution.get("Medium", 0) >= 5:
+        recommended_difficulty = "Hard"
+
+    # Average solving time
+    average_time = np.mean(df['time_taken'])
+
+    # Generate recommendation message
+    if average_time > 45:
+
+        message = (
+            "Your solving time is high. "
+            "Practice easier problems to improve speed."
+        )
+
+    else:
+
+        message = (
+            f"You should practice more "
+            f"{weak_topic} problems."
+        )
+
+    return jsonify({
+
+        "weak_topic": weak_topic,
+
+        "recommended_topic": weak_topic,
+
+        "recommended_difficulty": recommended_difficulty,
+
+        "average_solving_time": round(float(average_time), 2),
+
+        "message": message
+
+    }), 200

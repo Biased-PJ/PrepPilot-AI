@@ -1,3 +1,5 @@
+import requests
+from bs4 import BeautifulSoup
 from flask import Blueprint, request, jsonify
 from config import db
 from middleware.auth_middleware import token_required
@@ -667,3 +669,59 @@ def get_company_questions(company):
     )
 
     return jsonify(questions), 200
+
+@problems.route('/scrape-gfg-articles', methods=['GET'])
+@token_required
+def scrape_gfg_articles():
+
+    url = "https://www.geeksforgeeks.org/data-structures/"
+
+    response = requests.get(url)
+
+    if response.status_code != 200:
+
+        return jsonify({
+            "error": "Failed to fetch webpage"
+        }), 500
+
+    soup = BeautifulSoup(
+        response.text,
+        'html.parser'
+    )
+
+    articles = []
+
+    # Find article headings
+    headings = soup.find_all('h2')
+
+    for heading in headings[:10]:
+
+        title = heading.get_text(strip=True)
+
+        if len(title) > 0:
+
+            article = {
+                "title": title,
+                "source": "GeeksforGeeks"
+            }
+
+            # Store in MongoDB
+            db.scraped_articles.insert_one(article)
+
+            # Add ONLY clean article to response
+            articles.append({
+
+                "title": article["title"],
+
+                "source": article["source"]
+            })
+
+    return jsonify({
+
+        "message": "Articles scraped successfully",
+
+        "total_articles": len(articles),
+
+        "articles": articles
+
+    }), 200

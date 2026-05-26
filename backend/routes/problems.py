@@ -182,3 +182,87 @@ def generate_chart():
         "message": "Chart generated successfully",
         "chart_path": chart_path
     }), 200
+
+@problems.route('/dashboard', methods=['GET'])
+@token_required
+def dashboard():
+
+    user_email = request.user['email']
+
+    # Fetch user problems
+    problems_data = list(
+        db.problems.find(
+            {
+                "user_email": user_email
+            },
+            {
+                "_id": 0
+            }
+        )
+    )
+
+    if len(problems_data) == 0:
+
+        return jsonify({
+            "message": "No problems found"
+        }), 404
+
+    # Convert to DataFrame
+    df = pd.DataFrame(problems_data)
+
+    # Analytics
+    total_problems = len(df)
+
+    average_time = round(
+        float(np.mean(df['time_taken'])),
+        2
+    )
+
+    topic_distribution = (
+        df['topic']
+        .value_counts()
+        .to_dict()
+    )
+
+    difficulty_distribution = (
+        df['difficulty']
+        .value_counts()
+        .to_dict()
+    )
+
+    weak_topic = min(
+        topic_distribution,
+        key=topic_distribution.get
+    )
+
+    # Recent problems
+    recent_problems = problems_data[-5:]
+
+    # Safe chart path
+    safe_email = (
+        user_email
+        .replace("@", "_")
+        .replace(".", "_")
+    )
+
+    chart_path = f"static/{safe_email}_topic_chart.png"
+
+    return jsonify({
+
+        "user": user_email,
+
+        "total_problems": total_problems,
+
+        "average_time": average_time,
+
+        "weak_topic": weak_topic,
+
+        "topic_distribution": topic_distribution,
+
+        "difficulty_distribution": difficulty_distribution,
+
+        "recent_problems": recent_problems,
+
+        "chart_path": chart_path
+
+    }), 200

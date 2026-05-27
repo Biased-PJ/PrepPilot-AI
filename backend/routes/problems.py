@@ -340,63 +340,6 @@ def solve_question():
     }), 201
 
 # =========================================================
-# MY PROBLEMS
-# =========================================================
-
-@problems.route('/my-problems', methods=['GET'])
-@token_required
-def get_my_problems():
-
-    user_email = request.user['email']
-
-    progress_data = list(
-
-        db.user_progress.find({
-            "user_email": user_email
-        })
-
-    )
-
-    results = []
-
-    for progress in progress_data:
-
-        question = db.questions.find_one({
-            "_id": progress['question_id']
-        })
-
-        if question:
-
-            results.append({
-
-                "question_id": str(question['_id']),
-
-                "title": question['title'],
-
-                "topic": question['topic'],
-
-                "difficulty": question['difficulty'],
-
-                "platform": question['platform'],
-
-                "companies": question.get('companies', []),
-
-                "status": progress['status'],
-
-                "time_taken": progress['time_taken'],
-
-                "solved_at": progress['solved_at']
-            })
-
-    return jsonify({
-
-        "total_solved": len(results),
-
-        "problems": results
-
-    }), 200
-
-# =========================================================
 # ANALYTICS
 # =========================================================
 
@@ -418,85 +361,10 @@ def analytics():
 
 from services.recommendation_service import get_recommendations
 
-@problems.route("/recommendations", methods=["GET"])
+@problems.route("/recommendations")
 @token_required
 def recommendations():
-
-    user_email = request.user["email"]
-
-    return jsonify(
-        get_recommendations(user_email)
-    ), 200
-
-# =========================================================
-# STREAK
-# =========================================================
-
-@problems.route('/streak', methods=['GET'])
-@token_required
-def streak():
-
-    user_email = request.user['email']
-
-    progress_data = list(
-
-        db.user_progress.find(
-            {
-                "user_email": user_email
-            }
-        ).sort("solved_at", 1)
-
-    )
-
-    if len(progress_data) == 0:
-
-        return jsonify({
-            "current_streak": 0,
-            "active_days": 0
-        }), 200
-
-    solve_dates = sorted(list(set([
-
-        progress['solved_at'].date()
-
-        for progress in progress_data
-
-        if progress.get("solved_at")
-
-    ])))
-
-    if len(solve_dates) == 0:
-
-        return jsonify({
-            "current_streak": 0,
-            "active_days": 0
-        }), 200
-
-    current_streak = 1
-
-    for i in range(len(solve_dates) - 1, 0, -1):
-
-        diff = (
-            solve_dates[i]
-            - solve_dates[i - 1]
-        ).days
-
-        if diff == 1:
-
-            current_streak += 1
-
-        else:
-            break
-
-    return jsonify({
-
-        "current_streak": current_streak,
-
-        "active_days": len(solve_dates),
-
-        "last_solved_date": str(solve_dates[-1])
-
-    }), 200
+    return jsonify(get_recommendations(request.user["email"])), 200
 
 # =========================================================
 # READINESS SCORE
@@ -1156,48 +1024,6 @@ def leaderboard():
     return jsonify({
 
         "leaderboard": results
-
-    }), 200
-
-# =========================================================
-# TOPIC PROGRESS
-# =========================================================
-
-@problems.route('/topic-progress', methods=['GET'])
-@token_required
-def topic_progress():
-
-    user_email = request.user['email']
-
-    progress_data = list(
-
-        db.user_progress.find({
-            "user_email": user_email
-        })
-
-    )
-
-    stats = {}
-
-    for progress in progress_data:
-
-        question = db.questions.find_one({
-            "_id": progress['question_id']
-        })
-
-        if not question:
-            continue
-
-        topic = question.get(
-            "topic",
-            "General"
-        )
-
-        stats[topic] = stats.get(topic, 0) + 1
-
-    return jsonify({
-
-        "topics_solved": stats
 
     }), 200
 

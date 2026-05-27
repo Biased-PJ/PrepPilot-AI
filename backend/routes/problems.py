@@ -400,227 +400,33 @@ def get_my_problems():
 # ANALYTICS
 # =========================================================
 
-@problems.route('/analytics', methods=['GET'])
+from services.analytics_service import compute_analytics
+
+@problems.route("/analytics", methods=["GET"])
 @token_required
 def analytics():
 
-    user_email = request.user['email']
+    user_email = request.user["email"]
 
-    progress_data = list(
-
-        db.user_progress.find({
-            "user_email": user_email
-        })
-
-    )
-
-    if len(progress_data) == 0:
-
-        return jsonify({
-            "message": "No problems found"
-        }), 404
-
-    merged_data = []
-
-    for progress in progress_data:
-
-        question = db.questions.find_one({
-            "_id": progress['question_id']
-        })
-
-        if question:
-
-            merged_data.append({
-
-                "topic": question['topic'],
-
-                "difficulty": question['difficulty'],
-
-                "time_taken": progress['time_taken']
-            })
-
-    df = pd.DataFrame(merged_data)
-
-    topic_distribution = (
-        df['topic']
-        .value_counts()
-        .to_dict()
-    )
-
-    difficulty_distribution = (
-        df['difficulty']
-        .value_counts()
-        .to_dict()
-    )
-
-    weak_topic = min(
-        topic_distribution,
-        key=topic_distribution.get
-    )
-
-    return jsonify({
-
-        "total_problems": len(df),
-
-        "average_time": round(
-            float(np.mean(df['time_taken'])),
-            2
-        ),
-
-        "topic_distribution": topic_distribution,
-
-        "difficulty_distribution": difficulty_distribution,
-
-        "weak_topic": weak_topic
-
-    }), 200
+    return jsonify(
+        compute_analytics(user_email)
+    ), 200
 
 # =========================================================
 # RECOMMENDATIONS
 # =========================================================
 
-@problems.route('/recommendations', methods=['GET'])
+from services.recommendation_service import get_recommendations
+
+@problems.route("/recommendations", methods=["GET"])
 @token_required
 def recommendations():
 
-    user_email = request.user['email']
+    user_email = request.user["email"]
 
-    progress_data = list(
-
-        db.user_progress.find({
-            "user_email": user_email
-        })
-
-    )
-
-    # =====================================================
-    # NEW USER CASE
-    # =====================================================
-
-    if len(progress_data) == 0:
-
-        starter_questions = list(
-
-            db.questions.find({
-
-                "difficulty": {
-                    "$in": ["EASY", "Easy"]
-                }
-
-            }).limit(10)
-
-        )
-
-        recommendations = []
-
-        for q in starter_questions:
-
-            recommendations.append({
-
-                "question_id": str(q['_id']),
-
-                "title": q['title'],
-
-                "topic": q.get('topic', 'General'),
-
-                "difficulty": q['difficulty'],
-
-                "platform": q['platform'],
-
-                "link": q['link']
-            })
-
-        return jsonify({
-
-            "message": "Starter recommendations",
-
-            "recommendations": recommendations
-
-        }), 200
-
-    # =====================================================
-    # SOLVED QUESTIONS
-    # =====================================================
-
-    solved_question_ids = []
-
-    topic_frequency = {}
-
-    for progress in progress_data:
-
-        solved_question_ids.append(
-            progress['question_id']
-        )
-
-        question = db.questions.find_one({
-            "_id": progress['question_id']
-        })
-
-        if question:
-
-            topic = question.get("topic", "General")
-
-            topic_frequency[topic] = (
-
-                topic_frequency.get(topic, 0) + 1
-
-            )
-
-    # =====================================================
-    # FIND WEAK TOPIC
-    # =====================================================
-
-    weak_topic = min(
-        topic_frequency,
-        key=topic_frequency.get
-    )
-
-    # =====================================================
-    # RECOMMEND UNSOLVED QUESTIONS
-    # =====================================================
-
-    recommended_questions = list(
-
-        db.questions.find({
-
-            "topic": weak_topic,
-
-            "_id": {
-                "$nin": solved_question_ids
-            }
-
-        }).limit(10)
-
-    )
-
-    recommendations = []
-
-    for q in recommended_questions:
-
-        recommendations.append({
-
-            "question_id": str(q['_id']),
-
-            "title": q['title'],
-
-            "topic": q.get('topic', 'General'),
-
-            "difficulty": q['difficulty'],
-
-            "platform": q['platform'],
-
-            "link": q['link']
-        })
-
-    return jsonify({
-
-        "weak_topic": weak_topic,
-
-        "total_recommendations": len(recommendations),
-
-        "recommendations": recommendations
-
-    }), 200
+    return jsonify(
+        get_recommendations(user_email)
+    ), 200
 
 # =========================================================
 # STREAK
@@ -696,165 +502,16 @@ def streak():
 # READINESS SCORE
 # =========================================================
 
-@problems.route('/readiness-score', methods=['GET'])
+from services.readiness_service import readiness_score
+
+@problems.route("/readiness-score", methods=["GET"])
 @token_required
-def readiness_score():
+def get_readiness():
 
-    user_email = request.user['email']
-
-    progress_data = list(
-
-        db.user_progress.find({
-            "user_email": user_email
-        })
-
-    )
-
-    # =====================================================
-    # NO PROBLEMS CASE
-    # =====================================================
-
-    if len(progress_data) == 0:
-
-        return jsonify({
-
-            "interview_readiness_score": 0,
-
-            "readiness_level": "Beginner",
-
-            "stats": {
-
-                "total_problems": 0,
-
-                "easy": 0,
-
-                "medium": 0,
-
-                "hard": 0,
-
-                "topics_covered": 0
-            }
-
-        }), 200
-
-    total_problems = len(progress_data)
-
-    easy_count = 0
-    medium_count = 0
-    hard_count = 0
-
-    topics = set()
-
-    for progress in progress_data:
-
-        question = db.questions.find_one({
-            "_id": progress['question_id']
-        })
-
-        if not question:
-            continue
-
-        difficulty = str(
-            question.get('difficulty', '')
-        ).upper()
-
-        topics.add(
-            question.get('topic', 'General')
-        )
-
-        if difficulty == "EASY":
-            easy_count += 1
-
-        elif difficulty == "MEDIUM":
-            medium_count += 1
-
-        elif difficulty == "HARD":
-            hard_count += 1
-
-    # =====================================================
-    # SCORING LOGIC
-    # =====================================================
-
-    # 40 Marks
-    problem_score = min(
-
-        math.ceil(
-            (total_problems / 400) * 40
-        ),
-
-        40
-    )
-
-    # 35 Marks
-    difficulty_score = min(
-
-        math.ceil(
-            (medium_count * 0.15)
-            + (hard_count * 0.35)
-        ),
-
-        35
-    )
-
-    # 25 Marks
-    topic_score = min(
-
-        len(topics) * 2,
-
-        25
-    )
-
-    final_score = (
-        problem_score
-        + difficulty_score
-        + topic_score
-    )
-
-    final_score = min(final_score, 100)
-
-    # =====================================================
-    # READINESS LEVEL
-    # =====================================================
-
-    readiness_level = "Beginner"
-
-    if final_score >= 35:
-        readiness_level = "Intermediate"
-
-    if final_score >= 60:
-        readiness_level = "Advanced"
-
-    if final_score >= 80:
-        readiness_level = "Interview Ready"
+    user_email = request.user["email"]
 
     return jsonify({
-
-        "interview_readiness_score": final_score,
-
-        "readiness_level": readiness_level,
-
-        "stats": {
-
-            "total_problems": total_problems,
-
-            "easy": easy_count,
-
-            "medium": medium_count,
-
-            "hard": hard_count,
-
-            "topics_covered": len(topics)
-        },
-
-        "score_breakdown": {
-
-            "problem_score": problem_score,
-
-            "difficulty_score": difficulty_score,
-
-            "topic_score": topic_score
-        }
-
+        "readiness_score": readiness_score(user_email)
     }), 200
 
 # =========================================================

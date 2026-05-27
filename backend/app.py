@@ -1,15 +1,15 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+import os
 
-from config import db, SECRET_KEY
+from config import db
 from routes.auth import auth
 from middleware.auth_middleware import token_required
 from routes.problems import problems
 
 app = Flask(__name__)
 
-# Set secret key properly
-app.config['SECRET_KEY'] = SECRET_KEY
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 CORS(app)
 

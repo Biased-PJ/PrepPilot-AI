@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PrepPilot AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --surface3: #22222e;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --accent: #6c63ff;
+    --accent2: #ff6b6b;
+    --accent3: #00d9a6;
+    --text: #f0eff8;
+    --text-muted: rgba(240,239,248,0.52);
+    --text-subtle: rgba(240,239,248,0.28);
+    --easy: #00d9a6;
+    --medium: #f5a623;
+    --hard: #ff6b6b;
+    --sidebar-w: 240px;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===================== SIDEBAR ===================== */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    transition: transform 0.25s;
+  }
+
+  .sidebar-logo {
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .sidebar-logo .logo-icon {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .sidebar-logo span { color: var(--accent); }
+
+  .sidebar-nav {
+    padding: 1rem 0.75rem;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-subtle);
+    padding: 8px 10px 4px;
+    margin-top: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,0.12); color: var(--accent); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.8; }
+
+  .sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .user-pill:hover { background: var(--surface2); border-color: var(--border-hover); }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .user-info { flex: 1; overflow: hidden; }
+  .user-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 11px; color: var(--text-subtle); }
+
+  /* ===================== MAIN ===================== */
+  .main {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===================== TOPBAR ===================== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.7);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .topbar-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border-hover); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  /* ===================== CONTENT PANELS ===================== */
+  .panel { display: none; padding: 1.75rem; }
+  .panel.active { display: block; }
+
+  /* ===================== CARDS ===================== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ===================== STAT GRID ===================== */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border-hover); }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-sub { font-size: 12px; color: var(--text-subtle); }
+
+  .c-purple { color: var(--accent); }
+  .c-green { color: var(--accent3); }
+  .c-amber { color: #f5a623; }
+  .c-red { color: var(--accent2); }
+
+  /* ===================== READINESS GAUGE ===================== */
+  .readiness-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .gauge-wrap {
+    flex-shrink: 0;
+    position: relative;
+    width: 120px; height: 120px;
+  }
+
+  .gauge-svg { width: 120px; height: 120px; transform: rotate(-90deg); }
+  .gauge-bg { fill: none; stroke: var(--surface3); stroke-width: 10; }
+  .gauge-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .gauge-score {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 800;
+  }
+
+  .gauge-label { font-size: 10px; color: var(--text-subtle); margin-top: -2px; }
+
+  .readiness-info h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .readiness-info p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+
+  .score-breakdown { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .score-item { display: flex; flex-direction: column; gap: 2px; }
+  .score-item-label { font-size: 10px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.06em; }
+  .score-item-value { font-size: 16px; font-weight: 700; font-family: var(--font-display); }
+
+  /* ===================== GRID 2-COL ===================== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ===================== RECOMMENDATIONS ===================== */
+  .rec-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .rec-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    gap: 10px;
+    transition: all 0.15s;
+  }
+
+  .rec-item:hover { border-color: var(--border-hover); }
+
+  .rec-title { font-size: 13px; font-weight: 500; flex: 1; }
+  .rec-meta { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+  .pill {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .pill-easy { background: rgba(0,217,166,0.12); color: var(--easy); }
+  .pill-medium { background: rgba(245,166,35,0.12); color: var(--medium); }
+  .pill-hard { background: rgba(255,107,107,0.12); color: var(--hard); }
+  .pill-topic { background: rgba(108,99,255,0.1); color: var(--accent); }
+
+  .btn-sm {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    transition: all 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn-sm:hover { background: var(--surface3); color: var(--text); border-color: var(--border-hover); }
+  .btn-accent { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn-accent:hover { background: #7d75ff; color: #fff; }
+
+  /* ===================== PROBLEMS TABLE ===================== */
+  .table-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.18s;
+    width: 220px;
+  }
+
+  .search-input::placeholder { color: var(--text-subtle); }
+  .search-input:focus { border-color: var(--accent); }
+
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text-muted);
+    outline: none;
+    cursor: pointer;
+  }
+
+  .filter-select:focus { border-color: var(--accent); }
+
+  option { background: #1a1a24; }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead th {
+    padding: 10px 14px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-subtle);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 600;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-muted);
+    vertical-align: middle;
+  }
+
+  .td-title {
+    color: var(--text);
+    font-weight: 500;
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .solved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent3);
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .pagination-info { font-size: 12px; color: var(--text-subtle); }
+
+  .pagination-btns { display: flex; gap: 6px; }
+
+  .page-btn {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+  }
+
+  .page-btn:hover { background: var(--surface3); color: var(--text); }
+  .page-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
+  .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ===================== ANALYTICS ===================== */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .chart-card canvas { max-height: 260px; }
+
+  /* ===================== LEADERBOARD ===================== */
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row:hover { background: var(--surface2); }
+
+  .lb-rank {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 800;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .lb-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--surface3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .lb-email { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .lb-count {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--accent3);
+  }
+
+  /* ===================== DAILY CHALLENGE ===================== */
+  .daily-card {
+    background: var(--surface);
+    border: 1px solid rgba(108,99,255,0.25);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .daily-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 3px 3px 0 0;
+  }
+
+  .daily-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(108,99,255,0.1);
+    border: 1px solid rgba(108,99,255,0.2);
+    border-radius: 100px;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+  }
+
+  .daily-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+
+  .daily-meta { display: flex; gap: 10px; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+
+  .daily-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* ===================== COMPANY SEARCH ===================== */
+  .company-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .company-chip {
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .company-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.08); }
+  .company-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.12); }
+
+  /* ===================== LOADING / EMPTY ===================== */
+  .loading-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-subtle);
+    font-size: 13px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border-hover);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-subtle);
+  }
+
+  .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ===================== TOAST ===================== */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9999;
+    background: var(--surface2);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    font-size: 13px;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.22s ease;
+    max-width: 300px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(0,217,166,0.3); color: var(--accent3); }
+  .toast.error { border-color: rgba(255,107,107,0.3); color: var(--accent2); }
+
+  /* ===================== MOBILE MENU ===================== */
+  .menu-toggle {
+    display: none;
+    width: 34px; height: 34px;
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  .menu-toggle svg { width: 16px; height: 16px; }
+
+  @media (max-width: 720px) {
+    .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); z-index: 50; }
+    .sidebar.open { transform: translateX(0); }
+    .menu-toggle { display: flex; }
+    .panel { padding: 1rem; }
+    .topbar { padding: 0.75rem 1rem; }
+    .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr; }
+    .readiness-card { flex-direction: column; text-align: center; }
+  }
+
+  /* ===================== STREAK CALENDAR ===================== */
+  .streak-dots { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .streak-dot { width: 10px; height: 10px; border-radius: 2px; background: var(--surface3); }
+  .streak-dot.active { background: var(--accent3); }
+  .streak-dot.today { background: var(--accent); }
+
+  /* ===================== TOPIC BARS ===================== */
+  .topic-bar-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .topic-bar-row { display: flex; flex-direction: column; gap: 3px; }
+  .topic-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+  .topic-bar-track { height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+  .topic-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.8s ease; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <a href="index.html" class="sidebar-logo">
+    <div class="logo-icon">🚀</div>
+    Prep<span>Pilot</span> AI
+  </a>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <button class="nav-item active" onclick="showPanel('dashboard', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="showPanel('daily', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Daily Challenge
+    </button>
+
+    <div class="nav-section-label">Practice</div>
+    <button class="nav-item" onclick="showPanel('problems', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      All Problems
+    </button>
+    <button class="nav-item" onclick="showPanel('my-problems', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>
+      My Progress
+    </button>
+    <button class="nav-item" onclick="showPanel('recommendations', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Recommendations
+    </button>
+    <button class="nav-item" onclick="showPanel('companies', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      By Company
+    </button>
+
+    <div class="nav-section-label">Insights</div>
+    <button class="nav-item" onclick="showPanel('analytics', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Analytics
+    </button>
+    <button class="nav-item" onclick="showPanel('leaderboard', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Leaderboard
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-pill" id="user-pill">
+      <div class="avatar" id="user-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="user-email-display">Loading…</div>
+        <div class="user-role">Placement Prep</div>
+      </div>
+    </div>
+    <button class="btn-sm" style="width:100%;justify-content:center;margin-top:6px;" onclick="logout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle icon-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="topbar-title" id="panel-title">Dashboard</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" title="Refresh" onclick="refreshCurrentPanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: DASHBOARD ═══════════════ -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Solved</div>
+        <div class="stat-value c-purple" id="stat-total">—</div>
+        <div class="stat-sub">problems solved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Current Streak</div>
+        <div class="stat-value c-amber" id="stat-streak">—</div>
+        <div class="stat-sub" id="stat-active-days">active days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Readiness Score</div>
+        <div class="stat-value c-green" id="stat-readiness">—</div>
+        <div class="stat-sub" id="stat-level">out of 100</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Topics Covered</div>
+        <div class="stat-value c-purple" id="stat-topics">—</div>
+        <div class="stat-sub">unique topics</div>
+      </div>
+    </div>
+
+    <!-- Readiness Gauge -->
+    <div class="readiness-card" id="readiness-card">
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 120 120">
+          <circle class="gauge-bg" cx="60" cy="60" r="52"/>
+          <circle class="gauge-fill" id="gauge-fill" cx="60" cy="60" r="52"
+            stroke="var(--accent3)"
+            stroke-dasharray="326.73"
+            stroke-dashoffset="326.73"/>
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-score c-green" id="gauge-score">0</span>
+          <span class="gauge-label">/ 100</span>
+        </div>
+      </div>
+      <div class="readiness-info">
+        <h3 id="readiness-level">Loading…</h3>
+        <p id="readiness-desc">Calculating your interview readiness…</p>
+        <div class="score-breakdown" id="score-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- Recommendations + Streak -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🎯 Recommended for you</div>
+        <div id="dash-recs" class="rec-list">
+          <div class="loading-state"><div class="spinner"></div><br>Loading…</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔥 Streak & Activity</div>
+        <div id="streak-info" style="color:var(--text-muted); font-size:13px;">Loading…</div>
+        <div class="streak-dots" id="streak-dots"></div>
+      </div>
+    </div>
+
+    <!-- Difficulty breakdown -->
+    <div class="grid-3">
+      <div class="stat-card" style="border-color:rgba(0,217,166,0.2)">
+        <div class="stat-label">Easy Solved</div>
+        <div class="stat-value c-green" id="stat-easy">—</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(245,166,35,0.2)">
+        <div class="stat-label">Medium Solved</div>
+        <div class="stat-value c-amber" id="stat-medium">—</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(255,107,107,0.2)">
+        <div class="stat-label">Hard Solved</div>
+        <div class="stat-value c-red" id="stat-hard">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: PROBLEMS ═══════════════ -->
+  <div class="panel" id="panel-problems">
+    <div class="table-controls">
+      <input class="search-input" type="text" id="prob-search" placeholder="🔍  Search problems…" oninput="debounceSearch()"/>
+      <select class="filter-select" id="prob-difficulty" onchange="loadProblems(1)">
+        <option value="">All Difficulties</option>
+        <option value="Easy">Easy</option>
+        <option value="Medium">Medium</option>
+        <option value="Hard">Hard</option>
+      </select>
+      <select class="filter-select" id="prob-topic" onchange="loadProblems(1)">
+        <option value="">All Topics</option>
+      </select>
+      <select class="filter-select" id="prob-platform" onchange="loadProblems(1)">
+        <option value="">All Platforms</option>
+        <option value="LeetCode">LeetCode</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Problem</th>
+            <th>Difficulty</th>
+            <th>Topic</th>
+            <th>Platform</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="prob-tbody">
+          <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div><br>Loading problems…</div></td></tr>
+        </tbody>
+      </table>
+      <div class="pagination" id="prob-pagination" style="display:none">
+        <span class="pagination-info" id="prob-page-info"></span>
+        <div class="pagination-btns" id="prob-page-btns"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: MY PROBLEMS ═══════════════ -->
+  <div class="panel" id="panel-my-problems">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Problem</th>
+            <th>Difficulty</th>
+            <th>Topic</th>
+            <th>Status</th>
+            <th>Solved At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="my-prob-tbody">
+          <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div><br>Loading…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: RECOMMENDATIONS ═══════════════ -->
+  <div class="panel" id="panel-recommendations">
+    <div id="weak-topic-banner" style="margin-bottom:1rem;"></div>
+    <div class="rec-list" id="rec-list">
+      <div class="loading-state"><div class="spinner"></div><br>Loading recommendations…</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: ANALYTICS ═══════════════ -->
+  <div class="panel" id="panel-analytics">
+    <div id="analytics-content">
+      <div class="loading-state"><div class="spinner"></div><br>Loading analytics…</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: DAILY ═══════════════ -->
+  <div class="panel" id="panel-daily">
+    <div id="daily-content">
+      <div class="loading-state"><div class="spinner"></div><br>Fetching today's challenge…</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: LEADERBOARD ═══════════════ -->
+  <div class="panel" id="panel-leaderboard">
+    <div class="table-wrap" id="lb-wrap">
+      <div class="loading-state"><div class="spinner"></div><br>Loading leaderboard…</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PANEL: COMPANIES ═══════════════ -->
+  <div class="panel" id="panel-companies">
+    <div class="company-grid" id="company-chips">
+      <div class="company-chip active" onclick="selectCompany('Google', this)">🔍 Google</div>
+      <div class="company-chip" onclick="selectCompany('Amazon', this)">🛒 Amazon</div>
+      <div class="company-chip" onclick="selectCompany('Microsoft', this)">🪟 Microsoft</div>
+      <div class="company-chip" onclick="selectCompany('Meta', this)">📘 Meta</div>
+      <div class="company-chip" onclick="selectCompany('Apple', this)">🍎 Apple</div>
+      <div class="company-chip" onclick="selectCompany('Netflix', this)">🎬 Netflix</div>
+      <div class="company-chip" onclick="selectCompany('Adobe', this)">🎨 Adobe</div>
+      <div class="company-chip" onclick="selectCompany('Uber', this)">🚗 Uber</div>
+      <div class="company-chip" onclick="selectCompany('Flipkart', this)">🛍 Flipkart</div>
+      <div class="company-chip" onclick="selectCompany('Paytm', this)">💳 Paytm</div>
+      <div class="company-chip" onclick="selectCompany('Infosys', this)">💼 Infosys</div>
+      <div class="company-chip" onclick="selectCompany('Salesforce', this)">☁️ Salesforce</div>
+    </div>
+    <div id="company-results">
+      <div class="loading-state">Select a company to see its questions</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:5000';
+let token = localStorage.getItem('pp_token');
+let userEmail = localStorage.getItem('pp_email') || '';
+
+// ─── Auth guard ───────────────────────────────────────
+if (!token) window.location.href = 'index.html';
+
+// ─── Init user display ────────────────────────────────
+document.getElementById('user-email-display').textContent = userEmail;
+const initials = userEmail.split('@')[0].slice(0,2).toUpperCase();
+document.getElementById('user-avatar').textContent = initials;
+
+// ─── API helper ───────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 401) { logout(); return null; }
+  return res.json();
+}
+
+// ─── Toast ────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── Logout ───────────────────────────────────────────
+function logout() {
+  localStorage.clear();
+  window.location.href = 'index.html';
+}
+
+// ─── Sidebar ─────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ─── Panel switching ─────────────────────────────────
+const panelTitles = {
+  dashboard: 'Dashboard',
+  problems: 'All Problems',
+  'my-problems': 'My Progress',
+  recommendations: 'AI Recommendations',
+  analytics: 'Analytics',
+  daily: 'Daily Challenge',
+  leaderboard: 'Leaderboard',
+  companies: 'Company Questions'
+};
+
+let currentPanel = 'dashboard';
+
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('panel-title').textContent = panelTitles[name] || name;
+  currentPanel = name;
+  document.getElementById('sidebar').classList.remove('open');
+  loadPanel(name);
+}
+
+function refreshCurrentPanel() { loadPanel(currentPanel); }
+
+const loaded = new Set();
+
+function loadPanel(name) {
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'problems') loadProblems(1);
+  else if (name === 'my-problems') loadMyProblems();
+  else if (name === 'recommendations') loadRecommendations();
+  else if (name === 'analytics') loadAnalytics();
+  else if (name === 'daily') loadDaily();
+  else if (name === 'leaderboard') loadLeaderboard();
+  else if (name === 'companies') selectCompany('Google', document.querySelector('.company-chip.active'));
+}
+
+// ─────────────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────────────
+async function loadDashboard() {
+  const [readiness, streak, recs] = await Promise.all([
+    api('/readiness-score'),
+    api('/streak'),
+    api('/recommendations')
+  ]);
+
+  if (readiness) {
+    const s = readiness.stats;
+    document.getElementById('stat-total').textContent = s.total_problems;
+    document.getElementById('stat-topics').textContent = s.topics_covered;
+    document.getElementById('stat-readiness').textContent = readiness.interview_readiness_score;
+    document.getElementById('stat-level').textContent = readiness.readiness_level;
+    document.getElementById('stat-easy').textContent = s.easy;
+    document.getElementById('stat-medium').textContent = s.medium;
+    document.getElementById('stat-hard').textContent = s.hard;
+
+    const score = readiness.interview_readiness_score;
+    const circumference = 326.73;
+    const offset = circumference - (score / 100) * circumference;
+    setTimeout(() => {
+      document.getElementById('gauge-fill').style.strokeDashoffset = offset;
+      document.getElementById('gauge-score').textContent = score;
+    }, 100);
+
+    const levelColors = { Beginner: '#6c63ff', Intermediate: '#f5a623', Advanced: '#00d9a6', 'Interview Ready': '#00d9a6' };
+    const level = readiness.readiness_level;
+    document.getElementById('readiness-level').textContent = level;
+    document.getElementById('readiness-desc').textContent = readinessDesc(level);
+    document.getElementById('gauge-fill').style.stroke = levelColors[level] || '#6c63ff';
+
+    const bd = readiness.score_breakdown;
+    if (bd) {
+      document.getElementById('score-breakdown').innerHTML = `
+        <div class="score-item"><div class="score-item-label">Volume</div><div class="score-item-value c-purple">${bd.problem_score}/40</div></div>
+        <div class="score-item"><div class="score-item-label">Difficulty</div><div class="score-item-value c-amber">${bd.difficulty_score}/35</div></div>
+        <div class="score-item"><div class="score-item-label">Breadth</div><div class="score-item-value c-green">${bd.topic_score}/25</div></div>
+      `;
+    }
+  }
+
+  if (streak) {
+    document.getElementById('stat-streak').textContent = `🔥 ${streak.current_streak}`;
+    document.getElementById('stat-active-days').textContent = `${streak.active_days} active days`;
+    document.getElementById('streak-info').innerHTML = `
+      <p><strong>${streak.current_streak}</strong> day streak · <strong>${streak.active_days}</strong> active days total</p>
+      ${streak.last_solved_date ? `<p style="color:var(--text-subtle);font-size:12px;margin-top:4px;">Last solved: ${streak.last_solved_date}</p>` : ''}
+    `;
+    renderStreakDots(streak.active_days);
+  }
+
+  if (recs && recs.recommendations) {
+    const list = document.getElementById('dash-recs');
+    if (!recs.recommendations.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>No pending recommendations. Keep solving!</p></div>';
+    } else {
+      list.innerHTML = recs.recommendations.slice(0, 5).map(q => `
+        <div class="rec-item">
+          <span class="rec-title">${q.title}</span>
+          <div class="rec-meta">
+            <span class="pill ${pillClass(q.difficulty)}">${q.difficulty}</span>
+            <a href="${q.link}" target="_blank" class="btn-sm">Solve →</a>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function readinessDesc(level) {
+  const map = {
+    Beginner: 'Keep grinding! Solve more problems to build your foundation.',
+    Intermediate: 'Good progress! Focus on medium and hard problems now.',
+    Advanced: 'You\'re getting there! Tackle hard problems and cover all topics.',
+    'Interview Ready': 'Excellent! You\'re well-prepared. Now practice mock interviews.'
+  };
+  return map[level] || 'Keep practicing!';
+}
+
+function renderStreakDots(activeDays) {
+  const days = Math.min(activeDays, 84);
+  const dots = document.getElementById('streak-dots');
+  dots.innerHTML = Array.from({ length: 84 }, (_, i) => `
+    <div class="streak-dot ${i < days ? (i === days - 1 ? 'today' : 'active') : ''}"></div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// PROBLEMS
+// ─────────────────────────────────────────────────────
+let searchTimer = null;
+let currentPage = 1;
+let totalPages = 1;
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadProblems(1), 400);
+}
+
+async function loadTopics() {
+  const data = await api('/topics');
+  if (data && data.topics) {
+    const sel = document.getElementById('prob-topic');
+    data.topics.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+async function loadProblems(page = 1) {
+  currentPage = page;
+  const search = document.getElementById('prob-search').value.trim();
+  const diff = document.getElementById('prob-difficulty').value;
+  const topic = document.getElementById('prob-topic').value;
+  const platform = document.getElementById('prob-platform').value;
+
+  const params = new URLSearchParams({ page, limit: 20 });
+  if (search) params.set('search', search);
+  if (diff) params.set('difficulty', diff);
+  if (topic) params.set('topic', topic);
+  if (platform) params.set('platform', platform);
+
+  document.getElementById('prob-tbody').innerHTML = `<tr><td colspan="6"><div class="loading-state"><div class="spinner"></div><br>Loading…</div></td></tr>`;
+
+  const data = await api(`/all-questions?${params}`);
+  if (!data) return;
+
+  totalPages = data.total_pages;
+  const tbody = document.getElementById('prob-tbody');
+
+  if (!data.questions.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🔍</div><p>No problems found.</p></div></td></tr>`;
+    document.getElementById('prob-pagination').style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = data.questions.map((q, i) => `
+    <tr>
+      <td style="color:var(--text-subtle)">${(page-1)*20 + i + 1}</td>
+      <td class="td-title">${q.title}</td>
+      <td><span class="pill ${pillClass(q.difficulty)}">${q.difficulty}</span></td>
+      <td><span class="pill pill-topic">${q.topic}</span></td>
+      <td style="color:var(--text-subtle)">${q.platform}</td>
+      <td>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <a href="${q.link}" target="_blank" class="btn-sm">Open ↗</a>
+          <button class="btn-sm btn-accent" onclick="markSolved('${q.question_id}', this)">✓ Mark</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  // Pagination
+  const pag = document.getElementById('prob-pagination');
+  pag.style.display = 'flex';
+  document.getElementById('prob-page-info').textContent = `Page ${page} of ${totalPages} · ${data.total_questions} problems`;
+
+  const btns = document.getElementById('prob-page-btns');
+  btns.innerHTML = '';
+
+  const addBtn = (label, pg, disabled = false) => {
+    const b = document.createElement('button');
+    b.className = `page-btn ${pg === page ? 'active' : ''}`;
+    b.textContent = label;
+    b.disabled = disabled;
+    b.onclick = () => loadProblems(pg);
+    btns.appendChild(b);
+  };
+
+  addBtn('←', page - 1, page === 1);
+  const range = paginationRange(page, totalPages);
+  range.forEach(p => {
+    if (p === '…') {
+      const span = document.createElement('span');
+      span.textContent = '…';
+      span.style.cssText = 'color:var(--text-subtle);padding:0 4px;';
+      btns.appendChild(span);
+    } else addBtn(p, p);
+  });
+  addBtn('→', page + 1, page === totalPages);
+}
+
+function paginationRange(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '…', total];
+  if (current >= total - 3) return [1, '…', total-4, total-3, total-2, total-1, total];
+  return [1, '…', current-1, current, current+1, '…', total];
+}
+
+async function markSolved(questionId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  const data = await api('/solve-question', {
+    method: 'POST',
+    body: JSON.stringify({ question_id: questionId, status: 'Solved', time_taken: 0 })
+  });
+  if (data) {
+    if (data.message === 'Question already solved') {
+      toast('Already solved! ✓', 'success');
+    } else {
+      toast('Marked as solved! 🎉');
+    }
+    btn.textContent = '✓';
+    btn.style.background = 'rgba(0,217,166,0.15)';
+    btn.style.color = 'var(--easy)';
+  } else {
+    btn.disabled = false; btn.textContent = '✓ Mark';
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// MY PROBLEMS
+// ─────────────────────────────────────────────────────
+async function loadMyProblems() {
+  document.getElementById('my-prob-tbody').innerHTML = `<tr><td colspan="6"><div class="loading-state"><div class="spinner"></div><br>Loading…</div></td></tr>`;
+  const data = await api('/my-problems');
+  if (!data) return;
+
+  const tbody = document.getElementById('my-prob-tbody');
+  if (!data.problems.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><p>No problems solved yet. Start practicing!</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.problems.map(p => `
+    <tr>
+      <td class="td-title">${p.title}</td>
+      <td><span class="pill ${pillClass(p.difficulty)}">${p.difficulty}</span></td>
+      <td><span class="pill pill-topic">${p.topic}</span></td>
+      <td><span class="solved-badge">✓ ${p.status}</span></td>
+      <td style="color:var(--text-subtle)">${formatDate(p.solved_at)}</td>
+      <td>
+        <button class="btn-sm" style="color:var(--accent2);border-color:rgba(255,107,107,0.2)" 
+          onclick="unsolveQuestion('${p.question_id}', this)">✕ Remove</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function unsolveQuestion(qid, btn) {
+  btn.disabled = true;
+  const data = await api(`/unsolve-question/${qid}`, { method: 'DELETE' });
+  if (data) { toast('Removed from solved list.'); loadMyProblems(); }
+  else btn.disabled = false;
+}
+
+// ─────────────────────────────────────────────────────
+// RECOMMENDATIONS
+// ─────────────────────────────────────────────────────
+async function loadRecommendations() {
+  const data = await api('/recommendations');
+  const list = document.getElementById('rec-list');
+  const banner = document.getElementById('weak-topic-banner');
+
+  if (!data) return;
+
+  if (data.weak_topic) {
+    banner.innerHTML = `
+      <div style="background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.25rem">⚡</span>
+        <div>
+          <div style="font-weight:600;font-size:13px;">Weak Area Detected</div>
+          <div style="color:var(--text-muted);font-size:12px;">Your weakest topic is <strong style="color:var(--accent)">${data.weak_topic}</strong> — these recommendations focus on it.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (!data.recommendations || !data.recommendations.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>You\'ve mastered your weak topics! Great work.</p></div>';
+    return;
+  }
+
+  list.innerHTML = data.recommendations.map(q => `
+    <div class="rec-item">
+      <div>
+        <span class="rec-title">${q.title}</span>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <span class="pill pill-topic">${q.topic}</span>
+          <span class="pill ${pillClass(q.difficulty)}">${q.difficulty}</span>
+        </div>
+      </div>
+      <div class="rec-meta">
+        <span style="font-size:12px;color:var(--text-subtle)">${q.platform}</span>
+        <a href="${q.link}" target="_blank" class="btn-sm btn-accent">Solve →</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────────────────
+let analyticsCharts = {};
+
+async function loadAnalytics() {
+  const data = await api('/analytics');
+  const container = document.getElementById('analytics-content');
+
+  if (!data || data.message === 'No problems found') {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>Solve some problems first to see analytics.</p></div>';
+    return;
+  }
+
+  // Destroy old charts
+  Object.values(analyticsCharts).forEach(c => c.destroy());
+  analyticsCharts = {};
+
+  container.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Total Problems</div><div class="stat-value c-purple">${data.total_problems}</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Time (min)</div><div class="stat-value c-amber">${data.average_time}</div></div>
+        <div class="stat-card"><div class="stat-label">Weak Topic</div><div class="stat-value" style="font-size:1rem;padding-top:8px">${data.weak_topic}</div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-title">Topic Distribution</div>
+        <canvas id="chart-topic"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="card-title">Difficulty Breakdown</div>
+        <canvas id="chart-diff"></canvas>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:12px">
+      <div class="card-title">Topic Progress Bars</div>
+      <div class="topic-bar-list" id="topic-bars"></div>
+    </div>
+  `;
+
+  const chartDefaults = {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: 'rgba(240,239,248,0.5)', font: { family: "'DM Sans'" } } }
+    }
+  };
+
+  // Topic doughnut
+  const topicLabels = Object.keys(data.topic_distribution);
+  const topicValues = Object.values(data.topic_distribution);
+  const topicColors = topicLabels.map((_, i) => `hsl(${(i * 37) % 360}, 65%, 60%)`);
+
+  analyticsCharts.topic = new Chart(document.getElementById('chart-topic'), {
+    type: 'doughnut',
+    data: {
+      labels: topicLabels,
+      datasets: [{ data: topicValues, backgroundColor: topicColors, borderColor: '#111118', borderWidth: 2 }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '60%'
+    }
+  });
+
+  // Difficulty bar
+  const diffLabels = Object.keys(data.difficulty_distribution);
+  const diffValues = Object.values(data.difficulty_distribution);
+  const diffColors = diffLabels.map(l => {
+    const lc = l.toLowerCase();
+    return lc === 'easy' ? '#00d9a6' : lc === 'medium' ? '#f5a623' : '#ff6b6b';
+  });
+
+  analyticsCharts.diff = new Chart(document.getElementById('chart-diff'), {
+    type: 'bar',
+    data: {
+      labels: diffLabels,
+      datasets: [{
+        data: diffValues,
+        backgroundColor: diffColors,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { ticks: { color: 'rgba(240,239,248,0.4)' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: 'rgba(240,239,248,0.4)' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Topic bars
+  const maxVal = Math.max(...topicValues);
+  document.getElementById('topic-bars').innerHTML = topicLabels.map((t, i) => `
+    <div class="topic-bar-row">
+      <div class="topic-bar-label"><span>${t}</span><span>${topicValues[i]}</span></div>
+      <div class="topic-bar-track"><div class="topic-bar-fill" style="width:${Math.round((topicValues[i]/maxVal)*100)}%"></div></div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// DAILY CHALLENGE
+// ─────────────────────────────────────────────────────
+async function loadDaily() {
+  const data = await api('/daily-question');
+  const container = document.getElementById('daily-content');
+  if (!data || data.error) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No daily question available yet.</p></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="daily-card">
+      <div class="daily-chip">✨ Today's Challenge</div>
+      <div class="daily-title">${data.title}</div>
+      <div class="daily-meta">
+        <span class="pill ${pillClass(data.difficulty)}">${data.difficulty}</span>
+        <span class="pill pill-topic">${data.topic}</span>
+      </div>
+      <div class="daily-actions">
+        <a href="${data.link}" target="_blank" class="btn-sm btn-accent" style="padding:10px 24px;font-size:14px;">Open Problem →</a>
+        <button class="btn-sm" style="padding:10px 24px;font-size:14px;" onclick="markSolvedById('${data.question_id}', this)">✓ Mark as Solved</button>
+      </div>
+    </div>
+    <div style="margin-top:2rem">
+      <div class="card-title" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:1rem;">Want more? Try a random problem</div>
+      <button class="btn-sm" onclick="loadRandomQuestion()">🎲 Random Question</button>
+    </div>
+    <div id="random-result" style="margin-top:1rem;"></div>
+  `;
+}
+
+async function markSolvedById(qid, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  const data = await api('/solve-question', {
+    method: 'POST',
+    body: JSON.stringify({ question_id: qid, status: 'Solved', time_taken: 0 })
+  });
+  if (data) { toast('Solved! 🔥 Streak updated.'); btn.textContent = '✓ Done'; }
+  else { btn.disabled = false; btn.textContent = '✓ Mark as Solved'; }
+}
+
+async function loadRandomQuestion() {
+  const data = await api('/random-question');
+  if (!data) return;
+  document.getElementById('random-result').innerHTML = `
+    <div class="rec-item">
+      <div>
+        <span class="rec-title">${data.title}</span>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <span class="pill pill-topic">${data.topic}</span>
+          <span class="pill ${pillClass(data.difficulty)}">${data.difficulty}</span>
+        </div>
+      </div>
+      <div class="rec-meta">
+        <a href="${data.link}" target="_blank" class="btn-sm btn-accent">Solve →</a>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────
+// LEADERBOARD
+// ─────────────────────────────────────────────────────
+async function loadLeaderboard() {
+  const data = await api('/leaderboard');
+  const wrap = document.getElementById('lb-wrap');
+  if (!data || !data.leaderboard.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><p>Leaderboard is empty. Be the first!</p></div>';
+    return;
+  }
+
+  const medals = ['🥇', '🥈', '🥉'];
+  wrap.innerHTML = data.leaderboard.map((u, i) => {
+    const isMe = u.user_email === userEmail;
+    return `
+      <div class="lb-row" style="${isMe ? 'background:rgba(108,99,255,0.06);border-left:2px solid var(--accent);' : ''}">
+        <div class="lb-rank">${medals[i] || i + 1}</div>
+        <div class="lb-avatar" style="background:hsl(${(u.user_email.charCodeAt(0)*7)%360},50%,35%)">${u.user_email.slice(0,2).toUpperCase()}</div>
+        <div class="lb-email">${u.user_email} ${isMe ? '<span style="color:var(--accent);font-size:11px">(you)</span>' : ''}</div>
+        <div class="lb-count">${u.problems_solved} solved</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// COMPANIES
+// ─────────────────────────────────────────────────────
+async function selectCompany(company, chipEl) {
+  document.querySelectorAll('.company-chip').forEach(c => c.classList.remove('active'));
+  if (chipEl) chipEl.classList.add('active');
+
+  const container = document.getElementById('company-results');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><br>Fetching questions…</div>';
+
+  const data = await api(`/company-questions/${encodeURIComponent(company)}`);
+  if (!data) return;
+
+  if (!data.questions.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🏢</div><p>No questions found for ${company}. Try importing questions first.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">
+      Found <strong>${data.total_questions}</strong> questions asked by ${data.company}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Problem</th><th>Difficulty</th><th>Topic</th><th>Action</th></tr></thead>
+        <tbody>
+          ${data.questions.map(q => `
+            <tr>
+              <td class="td-title">${q.title}</td>
+              <td><span class="pill ${pillClass(q.difficulty)}">${q.difficulty}</span></td>
+              <td><span class="pill pill-topic">${q.topic}</span></td>
+              <td><a href="${q.link}" target="_blank" class="btn-sm">Open ↗</a></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────
+function pillClass(diff) {
+  if (!diff) return 'pill-easy';
+  const d = diff.toLowerCase();
+  if (d === 'easy') return 'pill-easy';
+  if (d === 'medium') return 'pill-medium';
+  return 'pill-hard';
+}
+
+function formatDate(dt) {
+  if (!dt) return '—';
+  try { return new Date(dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch { return dt; }
+}
+
+// ─────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────
+loadDashboard();
+loadTopics();
+</script>
+</body>
+</html>

@@ -6,3 +6,8 @@ bcrypt
 PyJWT
 gunicorn
 requests
+pandas
+numpy
+matplotlib
+beautifulsoup4
+dnspython

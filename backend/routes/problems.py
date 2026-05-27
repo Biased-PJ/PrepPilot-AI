@@ -1200,3 +1200,57 @@ def topic_progress():
         "topics_solved": stats
 
     }), 200
+
+@problems.route("/dashboard", methods=["GET"])
+@token_required
+def dashboard():
+
+    user_email = request.user["email"]
+
+    from services.unified_profile import get_unified_stats
+
+    stats = get_unified_stats(user_email)
+
+    local = db.user_progress.count_documents({
+        "user_email": user_email
+    })
+
+    return jsonify({
+        "local_solved": local,
+        "platform_stats": stats,
+        "total": local + stats["total"]
+    }), 200
+
+from services.user_progress_service import get_my_problems
+from services.streak_service import get_streak
+from services.topic_service import get_topic_progress
+
+@problems.route("/my-problems")
+@token_required
+def my_problems():
+
+    user_email = request.user["email"]
+
+    return jsonify(
+        get_my_problems(user_email)
+    ), 200
+
+@problems.route("/streak")
+@token_required
+def streak():
+
+    user_email = request.user["email"]
+
+    return jsonify(
+        get_streak(user_email)
+    ), 200
+
+@problems.route("/topic-progress")
+@token_required
+def topic_progress():
+
+    user_email = request.user["email"]
+
+    return jsonify(
+        get_topic_progress(user_email)
+    ), 200

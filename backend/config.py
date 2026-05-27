@@ -7,12 +7,8 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 
 if not MONGO_URI:
-    raise Exception("MONGO_URI not found")
+    raise Exception("MONGO_URI is missing in environment variables")
 
-try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    client.server_info()
-except Exception as e:
-    print("MongoDB connection error:", e)
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 
 db = client["preppilot_ai"]

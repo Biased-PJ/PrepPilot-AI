@@ -3,27 +3,26 @@ from config import db
 import bcrypt
 import jwt
 import datetime
+from config import JWT_SECRET_KEY
 
 auth = Blueprint('auth', __name__)
 
+
 @auth.route('/signup', methods=['POST'])
 def signup():
-
     data = request.json
 
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
 
-    # Check existing user
-    existing_user = db.users.find_one({
-        "email": email
-    })
+    # Basic validation
+    if not name or not email or not password:
+        return jsonify({"error": "All fields are required"}), 400
 
-    if existing_user:
-        return jsonify({
-            "error": "User already exists"
-        }), 400
+    # Check existing user
+    if db.users.find_one({"email": email}):
+        return jsonify({"error": "User already exists"}), 400
 
     # Hash password
     hashed_password = bcrypt.hashpw(
@@ -31,61 +30,48 @@ def signup():
         bcrypt.gensalt()
     ).decode('utf-8')
 
-    # Store user
     db.users.insert_one({
         "name": name,
         "email": email,
         "password": hashed_password
     })
 
-    return jsonify({
-        "message": "User created successfully"
-    }), 201
+    return jsonify({"message": "User created successfully"}), 201
+
 
 @auth.route('/login', methods=['POST'])
 def login():
-
     data = request.json
 
     email = data.get('email')
     password = data.get('password')
 
-    # Find user by email
-    user = db.users.find_one({
-        "email": email
-    })
+    if not email or not password:
+        return jsonify({"error": "Email and password required"}), 400
 
-    # User not found
+    user = db.users.find_one({"email": email})
+
     if not user:
-        return jsonify({
-            "error": "User not found"
-        }), 404
+        return jsonify({"error": "User not found"}), 404
 
-    stored_password = user['password']
-
-    # Verify password
-    password_match = bcrypt.checkpw(
+    if not bcrypt.checkpw(
         password.encode('utf-8'),
-        stored_password.encode('utf-8')
-    )
-
-    # Wrong password
-    if not password_match:
-        return jsonify({
-            "error": "Invalid password"
-        }), 401
-
-    print(current_app.config['SECRET_KEY'])
+        user['password'].encode('utf-8')
+    ):
+        return jsonify({"error": "Invalid password"}), 401
 
     token = jwt.encode(
         {
             "email": user['email'],
-            "exp": datetime.datetime.now(datetime.timezone.utc)
-                  + datetime.timedelta(days=1)
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
         },
-        current_app.config['SECRET_KEY'],
+        JWT_SECRET_KEY,
         algorithm="HS256"
     )
+
+    # Fix for PyJWT versions returning bytes
+    if isinstance(token, bytes):
+        token = token.decode('utf-8')
 
     return jsonify({
         "message": "Login successful",

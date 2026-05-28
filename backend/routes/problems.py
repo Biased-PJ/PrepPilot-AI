@@ -10,26 +10,26 @@ from middleware.rate_limit_middleware import (
 
 from services.question_service import (
 
-    add_question_service,
+    add_question,
 
-    get_all_questions_service,
+    get_all_questions,
 
-    search_questions_service,
+    search_questions,
 
-    random_question_service,
+    random_question,
 
-    daily_question_service,
+    daily_question,
 
-    company_questions_service,
+    company_questions,
 
-    get_topics_service
+    get_topics
 )
 
 from services.user_progress_service import (
 
-    solve_question_service,
+    solve_question,
 
-    unsolve_question_service,
+    unsolve_question,
 
     get_my_problems
 )
@@ -67,7 +67,7 @@ from services.unified_profile import (
 )
 
 from services.import_service import (
-    import_leetcode_questions_service
+    import_leetcode_questions
 )
 
 # =========================================================
@@ -110,7 +110,7 @@ def add_question():
 
     data = request.json or {}
 
-    result = add_question_service(data)
+    result = add_question(data)
 
     status_code = 201 if result.get(
         "success"
@@ -150,7 +150,7 @@ def get_all_questions():
             request.args.get("search")
     }
 
-    result = get_all_questions_service(
+    result = get_all_questions(
         filters
     )
 
@@ -169,7 +169,7 @@ def search_questions():
 
     keyword = request.args.get("q", "")
 
-    result = search_questions_service(
+    result = search_questions(
         keyword
     )
 
@@ -190,7 +190,7 @@ def search_questions():
 @token_required
 def random_question():
 
-    result = random_question_service()
+    result = random_question()
 
     status_code = 200 if result.get(
         "success"
@@ -209,7 +209,7 @@ def random_question():
 @token_required
 def daily_question():
 
-    result = daily_question_service()
+    result = daily_question()
 
     status_code = 200 if result.get(
         "success"
@@ -228,7 +228,7 @@ def daily_question():
 @token_required
 def company_questions(company):
 
-    result = company_questions_service(
+    result = company_questions(
         company
     )
 
@@ -245,7 +245,7 @@ def company_questions(company):
 @token_required
 def get_topics():
 
-    result = get_topics_service()
+    result = get_topics()
 
     return jsonify(result), 200
 
@@ -262,7 +262,7 @@ def solve_question():
 
     data = request.json or {}
 
-    result = solve_question_service(
+    result = solve_question(
 
         request.user["email"],
 
@@ -286,7 +286,7 @@ def solve_question():
 @token_required
 def unsolve_question(question_id):
 
-    result = unsolve_question_service(
+    result = unsolve_question(
 
         request.user["email"],
 
@@ -476,6 +476,6 @@ def generate_chart():
 @token_required
 def import_leetcode_questions():
 
-    result = import_leetcode_questions_service()
+    result = import_leetcode_questions()
 
     return jsonify(result), 200

@@ -54,7 +54,7 @@ from services.leaderboard_service import (
 )
 
 from services.chart_service import (
-    generate_user_chart
+    generate_user_charts
 )
 
 from services.unified_profile import (

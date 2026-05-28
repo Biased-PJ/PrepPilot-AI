@@ -1,41 +1,113 @@
-from flask import Flask, jsonify, request
+from flask import Flask
 from flask_cors import CORS
 import os
 
-from config import db
+# =========================================================
+# ROUTES
+# =========================================================
+
 from routes.auth import auth
-from middleware.auth_middleware import token_required
 from routes.problems import problems
+
+from routes.leetcode import leetcode
+from routes.codeforces import codeforces
+from routes.codechef import codechef
+
+# =========================================================
+# MIDDLEWARE
+# =========================================================
+
+from middleware.error_middleware import (
+    register_error_handlers
+)
+
+from middleware.request_logger import (
+    register_request_logger
+)
+
+# =========================================================
+# CREATE FLASK APP
+# =========================================================
 
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
+app.config["SECRET_KEY"] = os.getenv(
+    "SECRET_KEY",
+    "preppilot_secret"
+)
+
+# =========================================================
+# ENABLE CORS
+# =========================================================
 
 CORS(app)
 
+# =========================================================
+# REGISTER BLUEPRINTS
+# =========================================================
+
 app.register_blueprint(auth)
+
 app.register_blueprint(problems)
 
+app.register_blueprint(leetcode)
 
-@app.route('/')
+app.register_blueprint(codeforces)
+
+app.register_blueprint(codechef)
+
+# =========================================================
+# REGISTER MIDDLEWARE
+# =========================================================
+
+register_error_handlers(app)
+
+register_request_logger(app)
+
+# =========================================================
+# ROOT ROUTE
+# =========================================================
+
+@app.route("/")
 def home():
-    return {"message": "PrepPilot AI Backend Running"}
 
+    return {
 
-@app.route('/test-db')
-def test_db():
-    db.users.insert_one({"name": "test_user"})
-    return {"message": "MongoDB Connected"}
+        "success": True,
 
+        "message":
+            "PrepPilot AI Backend Running"
+    }
 
-@app.route('/profile')
-@token_required
-def profile():
-    return jsonify({
-        "message": "Protected profile accessed",
-        "user": request.user
-    })
+# =========================================================
+# HEALTH CHECK
+# =========================================================
 
+@app.route("/health")
+def health_check():
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    return {
+
+        "success": True,
+
+        "status": "healthy"
+    }
+
+# =========================================================
+# START SERVER
+# =========================================================
+
+if __name__ == "__main__":
+
+    app.run(
+
+        host="0.0.0.0",
+
+        port=5000,
+
+        debug=True
+    )

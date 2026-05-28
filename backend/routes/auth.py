@@ -1,79 +1,153 @@
-from flask import Blueprint, request, jsonify, current_app
-from config import db
-import bcrypt
-import jwt
-import datetime
-from config import JWT_SECRET_KEY
+from flask import Blueprint, request, jsonify
 
-auth = Blueprint('auth', __name__)
+from middleware.auth_middleware import (
+    token_required
+)
 
+from middleware.rate_limit_middleware import (
+    rate_limit
+)
 
-@auth.route('/signup', methods=['POST'])
+from services.auth_service import (
+
+    create_user,
+
+    login_user,
+
+    get_user_profile,
+
+    update_password
+)
+
+# =========================================================
+# BLUEPRINT
+# =========================================================
+
+auth = Blueprint(
+
+    "auth",
+
+    __name__
+)
+
+# =========================================================
+# SIGNUP
+# =========================================================
+
+@auth.route("/signup", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=60)
 def signup():
-    data = request.json
 
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
+    data = request.json or {}
 
-    # Basic validation
-    if not name or not email or not password:
-        return jsonify({"error": "All fields are required"}), 400
+    result = create_user(data)
 
-    # Check existing user
-    if db.users.find_one({"email": email}):
-        return jsonify({"error": "User already exists"}), 400
+    status_code = 201 if result.get(
+        "success"
+    ) else 400
 
-    # Hash password
-    hashed_password = bcrypt.hashpw(
-        password.encode('utf-8'),
-        bcrypt.gensalt()
-    ).decode('utf-8')
+    return jsonify(result), status_code
 
-    db.users.insert_one({
-        "name": name,
-        "email": email,
-        "password": hashed_password
-    })
+# =========================================================
+# LOGIN
+# =========================================================
 
-    return jsonify({"message": "User created successfully"}), 201
-
-
-@auth.route('/login', methods=['POST'])
+@auth.route("/login", methods=["POST"])
+@rate_limit(max_requests=15, window_seconds=60)
 def login():
-    data = request.json
 
-    email = data.get('email')
-    password = data.get('password')
+    data = request.json or {}
 
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
+    result = login_user(data)
 
-    user = db.users.find_one({"email": email})
+    status_code = 200 if result.get(
+        "success"
+    ) else 401
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    return jsonify(result), status_code
 
-    if not bcrypt.checkpw(
-        password.encode('utf-8'),
-        user['password'].encode('utf-8')
-    ):
-        return jsonify({"error": "Invalid password"}), 401
+# =========================================================
+# GET PROFILE
+# =========================================================
 
-    token = jwt.encode(
-        {
-            "email": user['email'],
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
-        },
-        JWT_SECRET_KEY,
-        algorithm="HS256"
+@auth.route("/profile", methods=["GET"])
+@token_required
+def profile():
+
+    user_email = request.user["email"]
+
+    result = get_user_profile(
+        user_email
     )
 
-    # Fix for PyJWT versions returning bytes
-    if isinstance(token, bytes):
-        token = token.decode('utf-8')
+    status_code = 200 if result.get(
+        "success"
+    ) else 404
+
+    return jsonify(result), status_code
+
+# =========================================================
+# UPDATE PASSWORD
+# =========================================================
+
+@auth.route(
+    "/update-password",
+    methods=["PUT"]
+)
+@token_required
+@rate_limit(max_requests=5, window_seconds=60)
+def change_password():
+
+    data = request.json or {}
+
+    old_password = data.get(
+        "old_password"
+    )
+
+    new_password = data.get(
+        "new_password"
+    )
+
+    if not old_password or not new_password:
+
+        return jsonify({
+
+            "success": False,
+
+            "message":
+                "old_password and new_password required"
+
+        }), 400
+
+    result = update_password(
+
+        request.user["email"],
+
+        old_password,
+
+        new_password
+    )
+
+    status_code = 200 if result.get(
+        "success"
+    ) else 400
+
+    return jsonify(result), status_code
+
+# =========================================================
+# VERIFY TOKEN
+# =========================================================
+
+@auth.route("/verify-token", methods=["GET"])
+@token_required
+def verify_token():
 
     return jsonify({
-        "message": "Login successful",
-        "token": token
+
+        "success": True,
+
+        "message":
+            "Token valid",
+
+        "user": request.user
     }), 200

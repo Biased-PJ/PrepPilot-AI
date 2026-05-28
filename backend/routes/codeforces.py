@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 
 from middleware.auth_middleware import token_required
 
-from services.leetcode_service import (
+from services.codeforces_service import (
 
     start_verification,
 
@@ -19,8 +19,8 @@ from services.leetcode_service import (
 # BLUEPRINT
 # =========================================================
 
-leetcode = Blueprint(
-    "leetcode",
+codeforces = Blueprint(
+    "codeforces",
     __name__
 )
 
@@ -28,23 +28,23 @@ leetcode = Blueprint(
 # START VERIFICATION
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/start-verification",
+@codeforces.route(
+    "/codeforces/start-verification",
     methods=["POST"]
 )
 @token_required
-def start_leetcode_verification():
+def start_codeforces_verification():
 
     user_email = request.user["email"]
 
     data = request.json
 
-    username = data.get("username")
+    handle = data.get("handle")
 
     result = start_verification(
 
         user_email,
-        username
+        handle
     )
 
     status = (
@@ -59,12 +59,12 @@ def start_leetcode_verification():
 # VERIFY ACCOUNT
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/verify",
+@codeforces.route(
+    "/codeforces/verify",
     methods=["POST"]
 )
 @token_required
-def verify_leetcode():
+def verify_codeforces():
 
     user_email = request.user["email"]
 
@@ -84,12 +84,12 @@ def verify_leetcode():
 # SYNC PROFILE
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/sync",
+@codeforces.route(
+    "/codeforces/sync",
     methods=["POST"]
 )
 @token_required
-def sync_leetcode():
+def sync_codeforces():
 
     user_email = request.user["email"]
 
@@ -109,8 +109,8 @@ def sync_leetcode():
 # GET PROFILE
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/profile",
+@codeforces.route(
+    "/codeforces/profile",
     methods=["GET"]
 )
 @token_required
@@ -134,12 +134,12 @@ def get_profile():
 # REMOVE ACCOUNT
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/remove",
+@codeforces.route(
+    "/codeforces/remove",
     methods=["DELETE"]
 )
 @token_required
-def remove_leetcode():
+def remove_codeforces():
 
     user_email = request.user["email"]
 
@@ -153,17 +153,17 @@ def remove_leetcode():
 # HEALTH CHECK
 # =========================================================
 
-@leetcode.route(
-    "/leetcode/test",
+@codeforces.route(
+    "/codeforces/test",
     methods=["GET"]
 )
-def leetcode_test():
+def codeforces_test():
 
     return jsonify({
 
         "success": True,
 
         "message":
-            "LeetCode routes working"
+            "Codeforces routes working"
 
     }), 200

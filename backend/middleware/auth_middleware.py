@@ -1,42 +1,126 @@
 from functools import wraps
+
 from flask import request, jsonify
-import jwt
-from config import JWT_SECRET_KEY
 
+from config import db
 
-def token_required(f):
+from utils.jwt_helper import (
 
-    @wraps(f)
-    def decorated(*args, **kwargs):
+    extract_token,
 
-        token = None
+    decode_token
+)
 
-        auth_header = request.headers.get('Authorization')
+# =========================================================
+# TOKEN REQUIRED DECORATOR
+# =========================================================
 
-        if auth_header:
-            try:
-                token = auth_header.split(" ")[1]
-            except:
-                return jsonify({"error": "Invalid token format"}), 401
+def token_required(route_function):
+
+    @wraps(route_function)
+    def wrapper(*args, **kwargs):
+
+        # =================================================
+        # GET AUTH HEADER
+        # =================================================
+
+        auth_header = request.headers.get(
+            "Authorization"
+        )
+
+        if not auth_header:
+
+            return jsonify({
+
+                "success": False,
+
+                "message":
+                    "Authorization header missing"
+
+            }), 401
+
+        # =================================================
+        # EXTRACT TOKEN
+        # =================================================
+
+        token = extract_token(auth_header)
 
         if not token:
-            return jsonify({"error": "Token is missing"}), 401
 
-        try:
-            data = jwt.decode(
-                token,
-                JWT_SECRET_KEY,
-                algorithms=["HS256"]
+            return jsonify({
+
+                "success": False,
+
+                "message":
+                    "Invalid authorization format"
+
+            }), 401
+
+        # =================================================
+        # DECODE TOKEN
+        # =================================================
+
+        decoded = decode_token(token)
+
+        if not decoded["success"]:
+
+            return jsonify({
+
+                "success": False,
+
+                "message":
+                    decoded["message"]
+
+            }), 401
+
+        # =================================================
+        # GET USER
+        # =================================================
+
+        payload = decoded["data"]
+
+        user = db.users.find_one({
+
+            "email":
+                payload["email"]
+        })
+
+        if not user:
+
+            return jsonify({
+
+                "success": False,
+
+                "message":
+                    "User not found"
+
+            }), 404
+
+        # =================================================
+        # ATTACH USER TO REQUEST
+        # =================================================
+
+        request.user = {
+
+            "_id": str(user["_id"]),
+
+            "name": user.get("name"),
+
+            "email": user.get("email"),
+
+            "role": user.get(
+                "role",
+                "user"
             )
+        }
 
-            request.user = data
+        # =================================================
+        # EXECUTE ROUTE
+        # =================================================
 
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Token expired"}), 401
+        return route_function(
+            *args,
+            **kwargs
+        )
 
-        except jwt.InvalidTokenError:
-            return jsonify({"error": "Invalid token"}), 401
-
-        return f(*args, **kwargs)
-
-    return decorated
+    return wrapper

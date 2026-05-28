@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Code, ArrowRight } from 'lucide-react';
+import { Code2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -21,116 +21,52 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
+    try { await login(email, password); } catch (err: any) { setError(err.response?.data?.message || 'Login failed'); } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 bg-orange-500/10 rounded-full blur-3xl -top-40 -left-40" />
-        <div className="absolute w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -bottom-40 -right-40" />
-      </div>
+    <div className="min-h-screen bg-[hsl(222,47%,4%)] flex items-center justify-center px-4">
+      <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse,rgba(249,115,22,0.06)_0%,transparent_70%)]" />
 
-      <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          {/* Header */}
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-8">
-              <Code className="w-8 h-8 text-orange-500" />
-              <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-                PrepPilot
-              </span>
-            </Link>
-            <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-slate-400">
-              Continue your coding journey
-            </p>
-          </div>
-
-          {/* Form Card */}
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-8">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-slate-300">
-                    Password
-                  </label>
-                  <Link href="/reset-password" className="text-orange-500 text-sm hover:text-orange-400">
-                    Forgot?
-                  </Link>
-                </div>
-                <Input
-                  type="password"
-                  placeholder="Your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-300 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90 py-2"
-              >
-                {loading ? 'Logging in...' : 'Log In'}
-                {!loading && <ArrowRight className="ml-2 w-4 h-4" />}
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-slate-700/50">
-              <p className="text-center text-slate-400 text-sm">
-                Don't have an account?{' '}
-                <Link href="/signup" className="text-orange-500 hover:text-orange-400 font-medium">
-                  Sign up
-                </Link>
-              </p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.25,0.4,0.25,1] }} className="relative w-full max-w-sm">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 mb-8">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <Code2 className="w-4.5 h-4.5 text-white" />
             </div>
-          </div>
+            <span className="text-[15px] font-semibold tracking-tight">PrepPilot</span>
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Welcome back</h1>
+          <p className="text-[14px] text-white/40">Continue your coding journey</p>
+        </div>
 
-          {/* Demo Credentials */}
-          <div className="mt-8 bg-slate-800/30 border border-slate-700/50 rounded-lg p-4 text-sm text-slate-400">
-            <p className="font-medium text-slate-300 mb-2">Demo Credentials</p>
-            <p>Email: demo@example.com</p>
-            <p>Password: demo123456</p>
+        <div className="glass rounded-xl p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-white/50 mb-1.5">Email</label>
+              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-[13px] font-medium text-white/50">Password</label>
+                <Link href="/reset-password" className="text-[12px] text-orange-400/70 hover:text-orange-300">Forgot?</Link>
+              </div>
+              <Input type="password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+
+            {error && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-300 text-[13px]">{error}</div>}
+
+            <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-white/90 font-medium h-10 rounded-lg text-[14px]">
+              {loading ? 'Logging in...' : <>Log in <ArrowRight className="w-4 h-4 ml-1" /></>}
+            </Button>
+          </form>
+
+          <div className="mt-5 pt-5 border-t border-white/[0.06] text-center">
+            <p className="text-[13px] text-white/40">Don't have an account? <Link href="/signup" className="text-orange-400 hover:text-orange-300">Sign up</Link></p>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

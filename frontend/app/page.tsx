@@ -1,338 +1,256 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import {
-  Brain,
-  BarChart3,
-  Zap,
-  Target,
-  Users,
-  ArrowRight,
-  CheckCircle,
-  Code,
-} from 'lucide-react';
+import { ArrowRight, Play, Sparkles, BarChart3, Target, Zap, Code2, ChevronRight } from 'lucide-react';
+import { useRef } from 'react';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay: i * 0.1, ease: [0.25, 0.4, 0.25, 1] as const },
+  }),
+};
 
 export default function Home() {
   const router = useRouter();
-
-  const features = [
-    {
-      icon: Brain,
-      title: 'AI-Powered Insights',
-      description: 'Get personalized recommendations based on your coding patterns and weak areas',
-    },
-    {
-      icon: BarChart3,
-      title: 'Advanced Analytics',
-      description: 'Track your progress across LeetCode, Codeforces, and CodeChef',
-    },
-    {
-      icon: Target,
-      title: 'Smart Practice Plans',
-      description: 'Adaptive learning paths tailored to your skill level and goals',
-    },
-    {
-      icon: Zap,
-      title: 'Real-Time Readiness',
-      description: 'Monitor your placement and interview readiness with precision',
-    },
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8 },
-    },
-  };
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <Code className="w-8 h-8 text-orange-500" />
-              <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-                PrepPilot
-              </span>
+    <div className="min-h-screen bg-[hsl(222,47%,4%)] text-white overflow-x-hidden">
+      {/* Navbar */}
+      <nav className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/[0.06] bg-[hsl(222,47%,4%)]/80 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto h-full flex items-center justify-between px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <Code2 className="w-4.5 h-4.5 text-white" />
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => router.push('/login')}
-                className="text-slate-300 hover:text-white"
-              >
-                Login
-              </Button>
-              <Button
-                onClick={() => router.push('/signup')}
-                className="bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90"
-              >
-                Get Started
-              </Button>
-            </div>
+            <span className="text-[15px] font-semibold tracking-tight">PrepPilot</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-[13px] text-white/50">
+            <span className="hover:text-white transition-colors cursor-pointer">Features</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Analytics</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Pricing</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Docs</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => router.push('/login')} className="text-white/60 hover:text-white text-[13px]">
+              Log in
+            </Button>
+            <Button size="sm" onClick={() => router.push('/signup')} className="bg-white text-black hover:bg-white/90 text-[13px] font-medium h-8 px-4 rounded-lg">
+              Get Started
+            </Button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute w-96 h-96 bg-orange-500/20 rounded-full blur-3xl -top-40 -right-40 animate-pulse" />
-          <div className="absolute w-96 h-96 bg-blue-500/20 rounded-full blur-3xl -bottom-40 -left-40 animate-pulse" />
-        </div>
+      {/* Hero */}
+      <section ref={heroRef} className="relative pt-32 pb-20 px-6">
+        {/* Grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        {/* Radial glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse,rgba(249,115,22,0.08)_0%,transparent_70%)]" />
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 max-w-5xl mx-auto text-center"
-        >
-          <motion.h1
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            className="text-5xl sm:text-7xl font-bold mb-6 leading-tight"
-          >
-            Master Competitive{' '}
-            <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 bg-clip-text text-transparent">
-              Programming
-            </span>
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative max-w-4xl mx-auto text-center">
+          {/* Badge */}
+          <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-[12px] text-white/60 mb-8">
+            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+            <span>AI-powered competitive programming analytics</span>
+            <ChevronRight className="w-3 h-3" />
+          </motion.div>
+
+          <motion.h1 custom={1} variants={fadeUp} initial="hidden" animate="visible" className="text-5xl sm:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
+            Code smarter.
+            <br />
+            <span className="text-gradient">Place faster.</span>
           </motion.h1>
 
-          <motion.p
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 0.2 }}
-            className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto"
-          >
-            AI-powered platform to track your coding journey, get smart recommendations, and
-            accelerate your path to landing your dream job
+          <motion.p custom={2} variants={fadeUp} initial="hidden" animate="visible" className="text-lg text-white/40 max-w-xl mx-auto mb-10 leading-relaxed">
+            Track your progress across LeetCode, Codeforces & CodeChef. Get AI recommendations, spot weak areas, and accelerate your placement prep.
           </motion.p>
 
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 0.4 }}
-            className="flex gap-4 justify-center flex-col sm:flex-row"
-          >
-            <Button
-              onClick={() => router.push('/signup')}
-              size="lg"
-              className="bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90 text-lg px-8"
-            >
-              Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
+          <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-center gap-3">
+            <Button onClick={() => router.push('/signup')} size="lg" className="bg-white text-black hover:bg-white/90 font-medium h-11 px-6 rounded-lg">
+              Start for free <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => router.push('/login')}
-              className="border-slate-700 text-white hover:bg-slate-800 text-lg px-8"
-            >
-              Login
+            <Button variant="outline" size="lg" className="border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/70 h-11 px-6 rounded-lg">
+              <Play className="w-4 h-4 mr-1.5" /> Watch demo
             </Button>
           </motion.div>
 
-          <motion.p
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 0.6 }}
-            className="text-sm text-slate-400 mt-4"
-          >
-            Join 10,000+ competitive programmers improving daily
-          </motion.p>
-        </motion.div>
-      </section>
-
-      {/* Features Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
-        >
-          {features.map((feature, i) => (
-            <motion.div
-              key={i}
-              variants={itemVariants}
-              className="group relative p-8 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 hover:border-orange-500/50 transition-all duration-300"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300" />
-
-              <feature.icon className="w-12 h-12 text-orange-500 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-              <p className="text-slate-400">{feature.description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-y border-slate-800">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8"
-        >
-          {[
-            { label: 'Active Users', value: '10,000+' },
-            { label: 'Problems Solved', value: '500K+' },
-            { label: 'Platforms', value: '3' },
-            { label: 'Uptime', value: '99.9%' },
-          ].map((stat, i) => (
-            <motion.div key={i} variants={itemVariants} className="text-center">
-              <div className="text-3xl font-bold text-orange-500 mb-2">{stat.value}</div>
-              <div className="text-slate-400">{stat.label}</div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl font-bold mb-4">Loved by Developers</h2>
-          <p className="text-slate-400">See what competitive programmers are saying</p>
+          {/* Social proof */}
+          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="mt-12 flex items-center justify-center gap-6 text-[13px] text-white/30">
+            <div className="flex -space-x-2">
+              {['bg-orange-500','bg-blue-500','bg-emerald-500','bg-purple-500'].map((c,i) => (
+                <div key={i} className={`w-7 h-7 rounded-full ${c} border-2 border-[hsl(222,47%,4%)]`} />
+              ))}
+            </div>
+            <span>Trusted by <span className="text-white/50 font-medium">10,000+</span> developers</span>
+          </motion.div>
         </motion.div>
 
+        {/* Dashboard Preview */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] as const }}
+          className="relative max-w-5xl mx-auto mt-16"
         >
-          {[
-            {
-              name: 'Alex Kumar',
-              role: 'SDE at Google',
-              text: 'PrepPilot helped me identify my weak areas and track progress across platforms efficiently.',
-              avatar: '🧑‍💻',
-            },
-            {
-              name: 'Sarah Chen',
-              role: 'Software Engineer at Meta',
-              text: 'The AI recommendations are incredibly accurate. Saved me months of aimless practice.',
-              avatar: '👩‍💻',
-            },
-            {
-              name: 'Arjun Patel',
-              role: 'Competitive Programmer',
-              text: 'Amazing platform for tracking readiness. The analytics are insightful and actionable.',
-              avatar: '🧑‍💻',
-            },
-          ].map((testimonial, i) => (
-            <motion.div
-              key={i}
-              variants={itemVariants}
-              className="p-6 rounded-lg bg-slate-800/50 border border-slate-700/50"
-            >
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-4xl">{testimonial.avatar}</span>
-                <div>
-                  <div className="font-semibold">{testimonial.name}</div>
-                  <div className="text-sm text-slate-400">{testimonial.role}</div>
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-1.5 shadow-2xl shadow-orange-500/5">
+            <div className="rounded-lg bg-[hsl(222,47%,6%)] overflow-hidden">
+              {/* Title bar */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                </div>
+                <div className="flex-1 text-center text-[12px] text-white/30">preppilot.ai/dashboard</div>
+              </div>
+              {/* Fake dashboard content */}
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Total Solved', value: '142', color: 'from-orange-500/10 to-orange-500/5' },
+                    { label: 'Streak', value: '7d', color: 'from-amber-500/10 to-amber-500/5' },
+                    { label: 'Readiness', value: '72%', color: 'from-emerald-500/10 to-emerald-500/5' },
+                    { label: 'Rating', value: '1680', color: 'from-blue-500/10 to-blue-500/5' },
+                  ].map((s,i) => (
+                    <div key={i} className={`rounded-lg bg-gradient-to-br ${s.color} border border-white/[0.06] p-4`}>
+                      <div className="text-[11px] text-white/30 mb-1">{s.label}</div>
+                      <div className="text-xl font-semibold">{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 rounded-lg border border-white/[0.06] bg-white/[0.02] h-40 flex items-center justify-center text-white/20 text-sm">
+                    Weekly Activity Chart
+                  </div>
+                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] h-40 flex items-center justify-center text-white/20 text-sm">
+                    Difficulty Split
+                  </div>
                 </div>
               </div>
-              <p className="text-slate-300">{testimonial.text}</p>
-            </motion.div>
+            </div>
+          </div>
+          {/* Glow under preview */}
+          <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-3/4 h-40 bg-orange-500/10 blur-3xl rounded-full" />
+        </motion.div>
+      </section>
+
+      {/* Features */}
+      <section className="relative py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+              Everything you need to <span className="text-gradient">crush placements</span>
+            </h2>
+            <p className="text-white/40 max-w-lg mx-auto">Powerful analytics and AI insights, designed for competitive programmers who want to move faster.</p>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/[0.06] rounded-xl overflow-hidden">
+            {[
+              { icon: Sparkles, title: 'AI Recommendations', desc: 'Personalized problem suggestions based on your weak areas and goals' },
+              { icon: BarChart3, title: 'Deep Analytics', desc: 'Track topic mastery, difficulty splits, and platform performance' },
+              { icon: Target, title: 'Readiness Score', desc: 'Real-time placement readiness calculated from your coding data' },
+              { icon: Zap, title: 'Smart Practice', desc: 'Adaptive learning paths that evolve with your skill level' },
+              { icon: Code2, title: '3 Platforms', desc: 'Unified dashboard for LeetCode, Codeforces, and CodeChef' },
+              { icon: Play, title: 'Contest Tracker', desc: 'Never miss a contest with smart alerts and post-contest analysis' },
+            ].map((f, i) => (
+              <div key={i} className="bg-[hsl(222,47%,4%)] p-8 group hover:bg-white/[0.02] transition-colors duration-300">
+                <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-5 group-hover:bg-orange-500/20 transition-colors">
+                  <f.icon className="w-5 h-5 text-orange-400" />
+                </div>
+                <h3 className="font-semibold mb-2 text-[15px]">{f.title}</h3>
+                <p className="text-white/40 text-[13px] leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="py-20 px-6 border-y border-white/[0.06]">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+          {[
+            { value: '10K+', label: 'Active Users' },
+            { value: '500K+', label: 'Problems Tracked' },
+            { value: '3', label: 'Platforms' },
+            { value: '99.9%', label: 'Uptime' },
+          ].map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-3xl font-bold text-gradient mb-1">{s.value}</div>
+              <div className="text-[13px] text-white/40">{s.label}</div>
+            </div>
           ))}
         </motion.div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto text-center bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 rounded-2xl p-12"
-        >
-          <h2 className="text-4xl font-bold mb-4">Ready to Master Competitive Programming?</h2>
-          <p className="text-slate-300 mb-8">Start your free trial today. No credit card required.</p>
-          <Button
-            onClick={() => router.push('/signup')}
-            size="lg"
-            className="bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90"
-          >
-            Get Started Now <ArrowRight className="ml-2" />
-          </Button>
+      {/* Testimonials */}
+      <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">Loved by developers</h2>
+          </motion.div>
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { name: 'Alex K.', role: 'SDE @ Google', text: 'PrepPilot identified my weak areas in weeks, not months. The AI recommendations are scarily accurate.', avatar: 'A' },
+              { name: 'Sarah C.', role: 'Engineer @ Meta', text: 'The unified dashboard across platforms saves me hours. I finally have a single source of truth.', avatar: 'S' },
+              { name: 'Arjun P.', role: 'CP Enthusiast', text: 'The readiness score gave me confidence before interviews. Landed my dream role.', avatar: 'A' },
+            ].map((t, i) => (
+              <div key={i} className="glass rounded-xl p-6 hover:border-white/[0.1] transition-all duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/20 flex items-center justify-center text-[13px] font-semibold text-orange-400">
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div className="text-[14px] font-medium">{t.name}</div>
+                    <div className="text-[12px] text-white/30">{t.role}</div>
+                  </div>
+                </div>
+                <p className="text-[14px] text-white/50 leading-relaxed">&ldquo;{t.text}&rdquo;</p>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 px-6">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="max-w-3xl mx-auto text-center glass rounded-2xl p-12 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent" />
+          <div className="relative">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">Ready to level up?</h2>
+            <p className="text-white/40 mb-8">Start free. No credit card required.</p>
+            <Button onClick={() => router.push('/signup')} size="lg" className="bg-white text-black hover:bg-white/90 font-medium h-11 px-8 rounded-lg">
+              Get started <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </div>
         </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-900/50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <div>Features</div>
-                <div>Pricing</div>
-                <div>Status</div>
-              </div>
+      <footer className="border-t border-white/[0.06] py-12 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <Code2 className="w-3.5 h-3.5 text-white" />
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <div>About</div>
-                <div>Blog</div>
-                <div>Careers</div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <div>Docs</div>
-                <div>Support</div>
-                <div>API</div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <div>Privacy</div>
-                <div>Terms</div>
-                <div>Security</div>
-              </div>
-            </div>
+            <span className="text-[14px] font-semibold">PrepPilot</span>
           </div>
-          <div className="border-t border-slate-800 pt-8 flex justify-between items-center text-sm text-slate-400">
-            <div>2024 PrepPilot AI. All rights reserved.</div>
-            <div className="flex gap-4">
-              <div>Twitter</div>
-              <div>GitHub</div>
-              <div>LinkedIn</div>
-            </div>
+          <div className="flex gap-8 text-[13px] text-white/30">
+            <span className="hover:text-white/60 cursor-pointer transition-colors">Privacy</span>
+            <span className="hover:text-white/60 cursor-pointer transition-colors">Terms</span>
+            <span className="hover:text-white/60 cursor-pointer transition-colors">Docs</span>
+            <span className="hover:text-white/60 cursor-pointer transition-colors">GitHub</span>
           </div>
+          <div className="text-[12px] text-white/20">&copy; 2024 PrepPilot AI</div>
         </div>
       </footer>
     </div>

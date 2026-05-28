@@ -5,231 +5,122 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth-context';
-import { Bell, Lock, User, Globe, Zap, ShieldAlert } from 'lucide-react';
+import { Bell, Lock, User, Palette, Shield, Download, Trash2, LogOut } from 'lucide-react';
+
+const fadeUp = { hidden:{opacity:0,y:16}, visible:(i:number)=>({opacity:1,y:0,transition:{duration:0.4,delay:i*0.05,ease:[0.25,0.4,0.25,1] as const}}) };
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [pushNotif, setPushNotif] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
-  const [theme, setTheme] = useState('dark');
 
-  const settingsSections = [
-    {
-      title: 'Profile Settings',
-      icon: User,
-      items: [
-        { label: 'Full Name', type: 'text', value: 'Demo User', editable: true },
-        { label: 'Email', type: 'email', value: user?.email || '', editable: false },
-        { label: 'Username', type: 'text', value: '@demo_user', editable: true },
-      ],
-    },
-    {
-      title: 'Notifications',
-      icon: Bell,
-      items: [
-        {
-          label: 'Email Notifications',
-          type: 'toggle',
-          value: emailNotifications,
-          onChange: setEmailNotifications,
-          description: 'Receive emails about your progress and recommendations',
-        },
-        {
-          label: 'Push Notifications',
-          type: 'toggle',
-          value: pushNotifications,
-          onChange: setPushNotifications,
-          description: 'Get browser notifications for contests and challenges',
-        },
-      ],
-    },
-    {
-      title: 'Appearance',
-      icon: Globe,
-      items: [
-        {
-          label: 'Dark Mode',
-          type: 'toggle',
-          value: darkMode,
-          onChange: setDarkMode,
-          description: 'Use dark theme for the application',
-        },
-      ],
-    },
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
+  const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+    <button onClick={() => onChange(!value)} className={`relative w-10 h-5.5 rounded-full transition-colors ${value ? 'bg-orange-500' : 'bg-white/10'}`}>
+      <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${value ? 'translate-x-[18px]' : ''}`} />
+    </button>
+  );
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-8 max-w-2xl"
-    >
-      <motion.div variants={itemVariants}>
-        <h1 className="text-4xl font-bold mb-2">Settings</h1>
-        <p className="text-slate-400">Manage your account and preferences</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible">
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-[14px] text-white/40 mt-1">Manage your account</p>
       </motion.div>
 
-      {/* Settings Sections */}
-      {settingsSections.map((section, sectionIdx) => {
-        const Icon = section.icon;
-        return (
-          <motion.div
-            key={sectionIdx}
-            variants={itemVariants}
-            className="bg-slate-800/30 border border-slate-700/50 rounded-lg overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-b border-slate-700/50 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <Icon className="w-6 h-6 text-orange-500" />
-                <h2 className="text-lg font-semibold">{section.title}</h2>
+      {/* Profile */}
+      <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible" className="glass rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+          <User className="w-4 h-4 text-orange-400" />
+          <h2 className="text-[14px] font-semibold">Profile</h2>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1.5">Full Name</label>
+            <Input defaultValue="Demo User" className="bg-white/[0.03] border-white/[0.08] text-white h-9 text-[13px] rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-[12px] text-white/40 mb-1.5">Email</label>
+            <Input value={user?.email || ''} disabled className="bg-white/[0.03] border-white/[0.08] text-white/40 h-9 text-[13px] rounded-lg" />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Notifications */}
+      <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible" className="glass rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+          <Bell className="w-4 h-4 text-orange-400" />
+          <h2 className="text-[14px] font-semibold">Notifications</h2>
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {[
+            { label:'Email notifications', desc:'Progress reports and recommendations', value:emailNotif, onChange:setEmailNotif },
+            { label:'Push notifications', desc:'Contest alerts and streak reminders', value:pushNotif, onChange:setPushNotif },
+          ].map((item,i) => (
+            <div key={i} className="px-5 py-4 flex items-center justify-between">
+              <div>
+                <div className="text-[14px] font-medium">{item.label}</div>
+                <div className="text-[12px] text-white/30">{item.desc}</div>
               </div>
+              <Toggle value={item.value} onChange={item.onChange} />
             </div>
-
-            <div className="divide-y divide-slate-700/50">
-              {section.items.map((item, itemIdx) => (
-                <div key={itemIdx} className="p-6 hover:bg-slate-700/10 transition-all">
-                  {item.type === 'text' || item.type === 'email' ? (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        {item.label}
-                      </label>
-                      <Input
-                        type={item.type as 'text' | 'email'}
-                        value={item.value as string}
-                        disabled={'editable' in item ? !item.editable : false}
-                        className="bg-slate-700/50 border-slate-600 disabled:opacity-50"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-medium mb-1">{item.label}</div>
-                        {'description' in item && item.description && (
-                          <p className="text-sm text-slate-400">{item.description}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => 'onChange' in item && item.onChange?.(!item.value)}
-                        className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full transition-colors ${
-                          item.value ? 'bg-orange-500' : 'bg-slate-600'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            item.value ? 'translate-x-7' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        );
-      })}
-
-      {/* Privacy Section */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-6"
-      >
-        <div className="flex items-start gap-4">
-          <Lock className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold mb-2">Privacy & Security</h2>
-            <p className="text-slate-400 text-sm mb-4">
-              Manage your password, two-factor authentication, and data privacy settings
-            </p>
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                <Lock className="w-4 h-4 mr-2" />
-                Change Password
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <ShieldAlert className="w-4 h-4 mr-2" />
-                Enable Two-Factor Authentication
-              </Button>
-            </div>
-          </div>
+          ))}
         </div>
       </motion.div>
 
-      {/* Data & Export */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-6"
-      >
-        <div className="flex items-start gap-4">
-          <Zap className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold mb-2">Data & Export</h2>
-            <p className="text-slate-400 text-sm mb-4">
-              Download your data or delete your account
-            </p>
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                Download My Data
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-red-400 hover:bg-red-500/10 hover:text-red-300"
-              >
-                Delete Account
-              </Button>
-            </div>
+      {/* Appearance */}
+      <motion.div custom={3} variants={fadeUp} initial="hidden" animate="visible" className="glass rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+          <Palette className="w-4 h-4 text-orange-400" />
+          <h2 className="text-[14px] font-semibold">Appearance</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <div className="text-[14px] font-medium">Dark mode</div>
+            <div className="text-[12px] text-white/30">Use dark theme throughout the app</div>
           </div>
+          <Toggle value={darkMode} onChange={setDarkMode} />
         </div>
       </motion.div>
 
-      {/* Danger Zone */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-red-500/10 border border-red-500/30 rounded-lg p-6"
-      >
-        <h2 className="text-lg font-semibold text-red-400 mb-4">Sign Out</h2>
-        <p className="text-slate-400 text-sm mb-4">Sign out from all devices</p>
-        <Button
-          onClick={logout}
-          className="w-full bg-red-500 hover:bg-red-600 text-white"
-        >
-          Sign Out
+      {/* Security */}
+      <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="glass rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+          <Shield className="w-4 h-4 text-orange-400" />
+          <h2 className="text-[14px] font-semibold">Security</h2>
+        </div>
+        <div className="p-5 space-y-2">
+          <Button variant="outline" className="w-full justify-start border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] text-white/60 h-9 text-[13px] rounded-lg">
+            <Lock className="w-3.5 h-3.5 mr-2" /> Change password
+          </Button>
+          <Button variant="outline" className="w-full justify-start border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] text-white/60 h-9 text-[13px] rounded-lg">
+            <Shield className="w-3.5 h-3.5 mr-2" /> Enable 2FA
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Data */}
+      <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="glass rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+          <Download className="w-4 h-4 text-orange-400" />
+          <h2 className="text-[14px] font-semibold">Data</h2>
+        </div>
+        <div className="p-5 space-y-2">
+          <Button variant="outline" className="w-full justify-start border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] text-white/60 h-9 text-[13px] rounded-lg">
+            <Download className="w-3.5 h-3.5 mr-2" /> Export my data
+          </Button>
+          <Button variant="outline" className="w-full justify-start border-red-500/15 bg-red-500/[0.03] hover:bg-red-500/[0.06] text-red-400/60 h-9 text-[13px] rounded-lg">
+            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete account
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Sign out */}
+      <motion.div custom={6} variants={fadeUp} initial="hidden" animate="visible">
+        <Button onClick={logout} className="w-full bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.06] text-white/40 hover:text-white/60 h-9 text-[13px] rounded-lg">
+          <LogOut className="w-3.5 h-3.5 mr-2" /> Sign out
         </Button>
       </motion.div>
-
-      {/* Support */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-6 text-center"
-      >
-        <p className="text-slate-400 mb-4">Need help? Contact us at support@prepp-pilot.com</p>
-        <div className="flex gap-3 justify-center">
-          <Button variant="outline" size="sm">
-            Documentation
-          </Button>
-          <Button variant="outline" size="sm">
-            Report Issue
-          </Button>
-          <Button variant="outline" size="sm">
-            Chat Support
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>
+    </div>
   );
 }

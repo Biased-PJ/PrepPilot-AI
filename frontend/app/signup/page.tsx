@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Code, ArrowRight } from 'lucide-react';
+import { Code2, ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SignupPage() {
@@ -21,146 +21,65 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
+    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setLoading(true);
-    try {
-      await signup(email, password);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Signup failed');
-    } finally {
-      setLoading(false);
-    }
+    try { await signup(email, password); } catch (err: any) { setError(err.response?.data?.message || 'Signup failed'); } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 bg-orange-500/10 rounded-full blur-3xl -top-40 -left-40" />
-        <div className="absolute w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -bottom-40 -right-40" />
-      </div>
+    <div className="min-h-screen bg-[hsl(222,47%,4%)] flex items-center justify-center px-4">
+      {/* Grid bg */}
+      <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse,rgba(249,115,22,0.06)_0%,transparent_70%)]" />
 
-      <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          {/* Header */}
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-8">
-              <Code className="w-8 h-8 text-orange-500" />
-              <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">
-                PrepPilot
-              </span>
-            </Link>
-            <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-            <p className="text-slate-400">
-              Join thousands of competitive programmers
-            </p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.25,0.4,0.25,1] }} className="relative w-full max-w-sm">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 mb-8">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <Code2 className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight">PrepPilot</span>
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Create your account</h1>
+          <p className="text-[14px] text-white/40">Start tracking your coding journey</p>
+        </div>
+
+        <div className="glass rounded-xl p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-white/50 mb-1.5">Email</label>
+              <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-white/50 mb-1.5">Password</label>
+              <Input type="password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-white/50 mb-1.5">Confirm Password</label>
+              <Input type="password" placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+
+            {error && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-300 text-[13px]">{error}</div>}
+
+            <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-white/90 font-medium h-10 rounded-lg text-[14px]">
+              {loading ? 'Creating account...' : <>Create account <ArrowRight className="w-4 h-4 ml-1" /></>}
+            </Button>
+          </form>
+
+          <div className="mt-5 pt-5 border-t border-white/[0.06] text-center">
+            <p className="text-[13px] text-white/40">Already have an account? <Link href="/login" className="text-orange-400 hover:text-orange-300">Log in</Link></p>
           </div>
+        </div>
 
-          {/* Form Card */}
-          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-8">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="At least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Confirm Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-300 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:opacity-90 py-2"
-              >
-                {loading ? 'Creating account...' : 'Create Account'}
-                {!loading && <ArrowRight className="ml-2 w-4 h-4" />}
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-slate-700/50">
-              <p className="text-center text-slate-400 text-sm">
-                Already have an account?{' '}
-                <Link href="/login" className="text-orange-500 hover:text-orange-400 font-medium">
-                  Log in
-                </Link>
-              </p>
+        <div className="mt-6 space-y-2.5">
+          {['Track progress across 3 platforms', 'Get AI-powered recommendations', 'Monitor your readiness score'].map((f,i) => (
+            <div key={i} className="flex items-center gap-2.5 text-[13px] text-white/30">
+              <Check className="w-3.5 h-3.5 text-orange-400/60" /> {f}
             </div>
-          </div>
-
-          {/* Features */}
-          <div className="mt-8 space-y-3 text-sm text-slate-400">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Track your progress across 3 platforms
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Get AI-powered recommendations
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              Monitor your readiness score
-            </div>
-          </div>
-        </motion.div>
-      </div>
+          ))}
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -12,25 +12,20 @@ from services.question_service import (
 
     add_question,
 
-    get_all_questions,
+    get_questions,
 
     search_questions,
 
-    random_question,
+    get_random_question,
 
-    daily_question,
+    get_daily_question,
 
-    company_questions,
+    get_company_questions,
 
-    get_topics
+    get_all_topics
 )
 
 from services.user_progress_service import (
-
-    solve_question,
-
-    unsolve_question,
-
     get_my_problems
 )
 
@@ -127,7 +122,7 @@ def add_question():
     methods=["GET"]
 )
 @token_required
-def get_all_questions():
+def get_questions():
 
     filters = {
 
@@ -150,7 +145,7 @@ def get_all_questions():
             request.args.get("search")
     }
 
-    result = get_all_questions(
+    result = get_questions(
         filters
     )
 
@@ -188,9 +183,9 @@ def search_questions():
     methods=["GET"]
 )
 @token_required
-def random_question():
+def get_random_question():
 
-    result = random_question()
+    result = get_random_question()
 
     status_code = 200 if result.get(
         "success"
@@ -207,9 +202,9 @@ def random_question():
     methods=["GET"]
 )
 @token_required
-def daily_question():
+def get_daily_question():
 
-    result = daily_question()
+    result = get_daily_question()
 
     status_code = 200 if result.get(
         "success"
@@ -226,9 +221,9 @@ def daily_question():
     methods=["GET"]
 )
 @token_required
-def company_questions(company):
+def get_company_questions(company):
 
-    result = company_questions(
+    result = get_company_questions(
         company
     )
 
@@ -243,61 +238,11 @@ def company_questions(company):
     methods=["GET"]
 )
 @token_required
-def get_topics():
+def get_all_topics():
 
-    result = get_topics()
+    result = get_all_topics()
 
     return jsonify(result), 200
-
-# =========================================================
-# SOLVE QUESTION
-# =========================================================
-
-@problems.route(
-    "/solve-question",
-    methods=["POST"]
-)
-@token_required
-def solve_question():
-
-    data = request.json or {}
-
-    result = solve_question(
-
-        request.user["email"],
-
-        data
-    )
-
-    status_code = 201 if result.get(
-        "success"
-    ) else 400
-
-    return jsonify(result), status_code
-
-# =========================================================
-# UNSOLVE QUESTION
-# =========================================================
-
-@problems.route(
-    "/unsolve-question/<question_id>",
-    methods=["DELETE"]
-)
-@token_required
-def unsolve_question(question_id):
-
-    result = unsolve_question(
-
-        request.user["email"],
-
-        question_id
-    )
-
-    status_code = 200 if result.get(
-        "success"
-    ) else 404
-
-    return jsonify(result), status_code
 
 # =========================================================
 # MY PROBLEMS

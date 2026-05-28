@@ -50,15 +50,15 @@ CORS(app)
 # REGISTER BLUEPRINTS
 # =========================================================
 
-app.register_blueprint(auth)
+app.register_blueprint(auth, url_prefix="/api/auth")
 
-app.register_blueprint(problems)
+app.register_blueprint(problems, url_prefix="/api/problems")
 
-app.register_blueprint(leetcode)
+app.register_blueprint(leetcode, url_prefix="/api/platforms/leetcode")
 
-app.register_blueprint(codeforces)
+app.register_blueprint(codeforces, url_prefix="/api/platforms/codeforces")
 
-app.register_blueprint(codechef)
+app.register_blueprint(codechef, url_prefix="/api/platforms/codechef")
 
 # =========================================================
 # REGISTER MIDDLEWARE

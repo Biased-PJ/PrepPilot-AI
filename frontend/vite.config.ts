@@ -5,10 +5,5 @@ export default defineConfig({
     server: {
       entry: "server",
     },
-
-    // 🔥 ADD THIS (critical fix)
-    nitro: {
-      preset: "netlify",
-    },
   },
 });

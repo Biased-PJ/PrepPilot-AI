@@ -3,167 +3,64 @@ from flask import Blueprint, request, jsonify
 from middleware.auth_middleware import token_required
 
 from services.leetcode_service import (
-
     start_verification,
-
     verify_account,
-
     sync_profile,
-
     get_saved_profile,
-
-    remove_account
+    remove_account,
 )
 
-# =========================================================
-# BLUEPRINT
-# =========================================================
+leetcode = Blueprint("leetcode", __name__)
 
-leetcode = Blueprint(
-    "leetcode",
-    __name__
-)
 
-# =========================================================
-# START VERIFICATION
-# =========================================================
+def _username_from_body(data):
+    return data.get("username") or data.get("handle")
 
-@leetcode.route(
-    "/leetcode/start-verification",
-    methods=["POST"]
-)
+
+@leetcode.route("/connect", methods=["POST"])
 @token_required
-def start_leetcode_verification():
-
-    user_email = request.user["email"]
-
-    data = request.json
-
-    username = data.get("username")
-
-    result = start_verification(
-
-        user_email,
-        username
-    )
-
-    status = (
-        200
-        if result["success"]
-        else 400
-    )
-
+def connect():
+    data = request.json or {}
+    username = _username_from_body(data)
+    result = start_verification(request.user["email"], username)
+    status = 200 if result.get("success") else 400
     return jsonify(result), status
 
-# =========================================================
-# VERIFY ACCOUNT
-# =========================================================
 
-@leetcode.route(
-    "/leetcode/verify",
-    methods=["POST"]
-)
+@leetcode.route("/disconnect", methods=["POST"])
 @token_required
-def verify_leetcode():
-
-    user_email = request.user["email"]
-
-    result = verify_account(
-        user_email
-    )
-
-    status = (
-        200
-        if result["success"]
-        else 400
-    )
-
-    return jsonify(result), status
-
-# =========================================================
-# SYNC PROFILE
-# =========================================================
-
-@leetcode.route(
-    "/leetcode/sync",
-    methods=["POST"]
-)
-@token_required
-def sync_leetcode():
-
-    user_email = request.user["email"]
-
-    result = sync_profile(
-        user_email
-    )
-
-    status = (
-        200
-        if result["success"]
-        else 400
-    )
-
-    return jsonify(result), status
-
-# =========================================================
-# GET PROFILE
-# =========================================================
-
-@leetcode.route(
-    "/leetcode/profile",
-    methods=["GET"]
-)
-@token_required
-def get_profile():
-
-    user_email = request.user["email"]
-
-    result = get_saved_profile(
-        user_email
-    )
-
-    status = (
-        200
-        if result["success"]
-        else 404
-    )
-
-    return jsonify(result), status
-
-# =========================================================
-# REMOVE ACCOUNT
-# =========================================================
-
-@leetcode.route(
-    "/leetcode/remove",
-    methods=["DELETE"]
-)
-@token_required
-def remove_leetcode():
-
-    user_email = request.user["email"]
-
-    result = remove_account(
-        user_email
-    )
-
+def disconnect():
+    result = remove_account(request.user["email"])
     return jsonify(result), 200
 
-# =========================================================
-# HEALTH CHECK
-# =========================================================
 
-@leetcode.route(
-    "/leetcode/test",
-    methods=["GET"]
-)
+@leetcode.route("/stats", methods=["GET"])
+@token_required
+def stats():
+    result = get_saved_profile(request.user["email"])
+    status = 200 if result.get("success") else 404
+    return jsonify(result), status
+
+
+@leetcode.route("/verify", methods=["POST"])
+@token_required
+def verify():
+    result = verify_account(request.user["email"])
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
+
+
+@leetcode.route("/sync", methods=["POST"])
+@token_required
+def sync():
+    result = sync_profile(request.user["email"])
+    status = 200 if result.get("success") else 400
+    return jsonify(result), status
+
+
+@leetcode.route("/test", methods=["GET"])
 def leetcode_test():
-
     return jsonify({
-
         "success": True,
-
-        "message":
-            "LeetCode routes working"
-
+        "message": "LeetCode routes working",
     }), 200

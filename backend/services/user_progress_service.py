@@ -502,3 +502,251 @@ def determine_performance(total_score):
         return "Beginner"
 
     return "Starter"
+
+# =========================================================
+# PROGRESS HELPERS
+# =========================================================
+
+def _parse_question_id(question_id):
+
+    try:
+        return ObjectId(question_id)
+    except Exception:
+        return None
+
+def _progress_query(user_email, question_oid):
+
+    return {
+        "user_email": user_email,
+        "question_id": question_oid
+    }
+
+# =========================================================
+# MARK SOLVED
+# =========================================================
+
+def mark_problem_solved(user_email, question_id):
+
+    question_oid = _parse_question_id(question_id)
+
+    if not question_oid:
+        return {
+            "success": False,
+            "message": "Invalid question id"
+        }
+
+    question = db.questions.find_one({
+        "_id": question_oid
+    })
+
+    if not question:
+        return {
+            "success": False,
+            "message": "Question not found"
+        }
+
+    existing = db.user_progress.find_one(
+        _progress_query(user_email, question_oid)
+    )
+
+    update_fields = {
+        "user_email": user_email,
+        "question_id": question_oid,
+        "status": "Solved",
+        "solved_at": datetime.utcnow(),
+        "bookmarked": existing.get("bookmarked", False)
+        if existing
+        else False
+    }
+
+    db.user_progress.update_one(
+        _progress_query(user_email, question_oid),
+        {"$set": update_fields},
+        upsert=True
+    )
+
+    return {
+        "success": True,
+        "message": "Problem marked as solved",
+        "question_id": str(question_oid)
+    }
+
+# =========================================================
+# MARK UNSOLVED
+# =========================================================
+
+def mark_problem_unsolved(user_email, question_id):
+
+    question_oid = _parse_question_id(question_id)
+
+    if not question_oid:
+        return {
+            "success": False,
+            "message": "Invalid question id"
+        }
+
+    existing = db.user_progress.find_one(
+        _progress_query(user_email, question_oid)
+    )
+
+    if not existing:
+        return {
+            "success": True,
+            "message": "Problem was not marked solved"
+        }
+
+    if existing.get("bookmarked"):
+        db.user_progress.update_one(
+            _progress_query(user_email, question_oid),
+            {
+                "$unset": {
+                    "solved_at": "",
+                    "status": ""
+                },
+                "$set": {
+                    "status": "Bookmarked"
+                }
+            }
+        )
+    else:
+        db.user_progress.delete_one(
+            _progress_query(user_email, question_oid)
+        )
+
+    return {
+        "success": True,
+        "message": "Problem marked as unsolved",
+        "question_id": str(question_oid)
+    }
+
+# =========================================================
+# TOGGLE BOOKMARK
+# =========================================================
+
+def toggle_problem_bookmark(user_email, question_id):
+
+    question_oid = _parse_question_id(question_id)
+
+    if not question_oid:
+        return {
+            "success": False,
+            "message": "Invalid question id"
+        }
+
+    question = db.questions.find_one({
+        "_id": question_oid
+    })
+
+    if not question:
+        return {
+            "success": False,
+            "message": "Question not found"
+        }
+
+    existing = db.user_progress.find_one(
+        _progress_query(user_email, question_oid)
+    )
+
+    bookmarked = not existing.get("bookmarked", False) if existing else True
+
+    update_fields = {
+        "user_email": user_email,
+        "question_id": question_oid,
+        "bookmarked": bookmarked
+    }
+
+    if existing and existing.get("solved_at"):
+        update_fields["status"] = existing.get("status", "Solved")
+        update_fields["solved_at"] = existing.get("solved_at")
+    elif bookmarked:
+        update_fields["status"] = "Bookmarked"
+
+    db.user_progress.update_one(
+        _progress_query(user_email, question_oid),
+        {"$set": update_fields},
+        upsert=True
+    )
+
+    return {
+        "success": True,
+        "message": "Bookmark updated",
+        "question_id": str(question_oid),
+        "bookmarked": bookmarked
+    }
+
+# =========================================================
+# QUESTION WITH USER STATE
+# =========================================================
+
+def get_question_with_user_state(user_email, question_id):
+
+    from services.question_service import get_question_by_id
+
+    question = get_question_by_id(question_id)
+
+    if not question:
+        return {
+            "success": False,
+            "message": "Question not found"
+        }
+
+    question_oid = _parse_question_id(question_id)
+
+    progress = db.user_progress.find_one(
+        _progress_query(user_email, question_oid)
+    )
+
+    question["solved"] = bool(
+        progress and progress.get("solved_at")
+    )
+
+    question["bookmarked"] = bool(
+        progress and progress.get("bookmarked")
+    )
+
+    return {
+        "success": True,
+        "question": question
+    }
+
+# =========================================================
+# LIST QUESTIONS WITH USER STATE
+# =========================================================
+
+def list_questions_with_user_state(user_email, page, limit, filters):
+
+    from services.question_service import get_questions
+
+    page = int(page or 1)
+    limit = int(limit or 20)
+
+    result = get_questions(
+        page=page,
+        limit=limit,
+        filters=filters
+    )
+
+    progress_rows = list(
+        db.user_progress.find({
+            "user_email": user_email
+        })
+    )
+
+    progress_map = {
+        str(row["question_id"]): row
+        for row in progress_rows
+    }
+
+    for question in result.get("questions", []):
+        progress = progress_map.get(question["question_id"])
+        question["solved"] = bool(
+            progress and progress.get("solved_at")
+        )
+        question["bookmarked"] = bool(
+            progress and progress.get("bookmarked")
+        )
+
+    return {
+        "success": True,
+        **result
+    }

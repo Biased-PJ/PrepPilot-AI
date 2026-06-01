@@ -12,6 +12,7 @@ import Link from 'next/link';
 export default function SignupPage() {
   const router = useRouter();
   const { signup } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,9 +23,10 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (!name.trim()) { setError('Name is required'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
     setLoading(true);
-    try { await signup(email, password); } catch (err: any) { setError(err.response?.data?.message || 'Signup failed'); } finally { setLoading(false); }
+    try { await signup(name.trim(), email, password); } catch (err: any) { setError(err.response?.data?.message || 'Signup failed'); } finally { setLoading(false); }
   };
 
   return (
@@ -48,12 +50,16 @@ export default function SignupPage() {
         <div className="glass rounded-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label className="block text-[13px] font-medium text-white/50 mb-1.5">Name</label>
+              <Input type="text" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+            </div>
+            <div>
               <label className="block text-[13px] font-medium text-white/50 mb-1.5">Email</label>
               <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
             </div>
             <div>
               <label className="block text-[13px] font-medium text-white/50 mb-1.5">Password</label>
-              <Input type="password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
+              <Input type="password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 h-10 text-[14px] rounded-lg focus:border-orange-500/50 focus:ring-orange-500/20" required disabled={loading} />
             </div>
             <div>
               <label className="block text-[13px] font-medium text-white/50 mb-1.5">Confirm Password</label>

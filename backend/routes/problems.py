@@ -1,426 +1,99 @@
 from flask import Blueprint, request, jsonify
 
-from middleware.auth_middleware import (
-    token_required
-)
+from middleware.auth_middleware import token_required
+from middleware.rate_limit_middleware import rate_limit
 
-from middleware.rate_limit_middleware import (
-    rate_limit
-)
-
-from services.question_service import (
-
-    add_question,
-
-    get_questions,
-
-    search_questions,
-
-    get_random_question,
-
-    get_daily_question,
-
-    get_company_questions,
-
-    get_all_topics
-)
-
+from services.question_service import add_question as create_question
 from services.user_progress_service import (
-    get_my_problems
+    list_questions_with_user_state,
+    get_question_with_user_state,
+    mark_problem_solved,
+    mark_problem_unsolved,
+    toggle_problem_bookmark,
 )
 
-from services.analytics_service import (
-    compute_analytics
-)
+problems = Blueprint("problems", __name__)
 
-from services.recommendation_service import (
-    get_recommendations
-)
 
-from services.readiness_service import (
-    readiness_score
-)
-
-from services.streak_service import (
-    get_streak
-)
-
-from services.topic_service import (
-    get_topic_progress
-)
-
-from services.leaderboard_service import (
-    get_leaderboard
-)
-
-from services.chart_service import (
-    generate_user_charts
-)
-
-from services.unified_profile import (
-    get_unified_stats
-)
-
-from services.import_service import (
-    import_leetcode_questions
-)
-
-# =========================================================
-# BLUEPRINT
-# =========================================================
-
-problems = Blueprint(
-
-    "problems",
-
-    __name__
-)
-
-# =========================================================
-# TEST ROUTE
-# =========================================================
-
-@problems.route("/test", methods=["GET"])
-def test_route():
-
-    return jsonify({
-
-        "success": True,
-
-        "message":
-            "Problems API working"
-    }), 200
-
-# =========================================================
-# ADD QUESTION
-# =========================================================
-
-@problems.route(
-    "/add-question",
-    methods=["POST"]
-)
-@token_required
-@rate_limit(max_requests=20, window_seconds=60)
-def add_question():
-
-    data = request.json or {}
-
-    result = add_question(data)
-
-    status_code = 201 if result.get(
-        "success"
-    ) else 400
-
-    return jsonify(result), status_code
-
-# =========================================================
-# GET ALL QUESTIONS
-# =========================================================
-
-@problems.route(
-    "/all-questions",
-    methods=["GET"]
-)
-@token_required
-def get_questions():
-
-    filters = {
-
-        "page":
-            request.args.get("page", 1),
-
-        "limit":
-            request.args.get("limit", 20),
-
-        "difficulty":
-            request.args.get("difficulty"),
-
-        "topic":
-            request.args.get("topic"),
-
-        "platform":
-            request.args.get("platform"),
-
-        "search":
-            request.args.get("search")
+def _question_filters():
+    return {
+        "difficulty": request.args.get("difficulty"),
+        "topic": request.args.get("topic"),
+        "platform": request.args.get("platform"),
+        "search": request.args.get("search"),
+        "tags": request.args.get("tags"),
+        "companies": request.args.get("companies"),
+        "paid_only": request.args.get("paid_only"),
     }
 
-    result = get_questions(
-        filters
-    )
 
+@problems.route("", methods=["GET"])
+@problems.route("/", methods=["GET"])
+@token_required
+def list_problems():
+    page = request.args.get("page", 1)
+    limit = request.args.get("limit", 20)
+    result = list_questions_with_user_state(
+        request.user["email"],
+        page,
+        limit,
+        _question_filters(),
+    )
     return jsonify(result), 200
 
-# =========================================================
-# SEARCH QUESTIONS
-# =========================================================
 
-@problems.route(
-    "/search-questions",
-    methods=["GET"]
-)
+@problems.route("/<question_id>", methods=["GET"])
 @token_required
-def search_questions():
-
-    keyword = request.args.get("q", "")
-
-    result = search_questions(
-        keyword
+def get_problem(question_id):
+    result = get_question_with_user_state(
+        request.user["email"],
+        question_id,
     )
-
-    status_code = 200 if result.get(
-        "success"
-    ) else 400
-
+    status_code = 200 if result.get("success") else 404
     return jsonify(result), status_code
 
-# =========================================================
-# RANDOM QUESTION
-# =========================================================
 
-@problems.route(
-    "/random-question",
-    methods=["GET"]
-)
+@problems.route("/<question_id>/solve", methods=["POST"])
 @token_required
-def get_random_question():
-
-    result = get_random_question()
-
-    status_code = 200 if result.get(
-        "success"
-    ) else 404
-
+@rate_limit(max_requests=30, window_seconds=60)
+def solve_problem(question_id):
+    result = mark_problem_solved(
+        request.user["email"],
+        question_id,
+    )
+    status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
-# =========================================================
-# DAILY QUESTION
-# =========================================================
 
-@problems.route(
-    "/daily-question",
-    methods=["GET"]
-)
+@problems.route("/<question_id>/unsolve", methods=["POST"])
 @token_required
-def get_daily_question():
-
-    result = get_daily_question()
-
-    status_code = 200 if result.get(
-        "success"
-    ) else 404
-
+@rate_limit(max_requests=30, window_seconds=60)
+def unsolve_problem(question_id):
+    result = mark_problem_unsolved(
+        request.user["email"],
+        question_id,
+    )
+    status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
-# =========================================================
-# COMPANY QUESTIONS
-# =========================================================
 
-@problems.route(
-    "/company-questions/<company>",
-    methods=["GET"]
-)
+@problems.route("/<question_id>/bookmark", methods=["POST"])
 @token_required
-def get_company_questions(company):
-
-    result = get_company_questions(
-        company
+@rate_limit(max_requests=30, window_seconds=60)
+def bookmark_problem(question_id):
+    result = toggle_problem_bookmark(
+        request.user["email"],
+        question_id,
     )
-
-    return jsonify(result), 200
-
-# =========================================================
-# TOPICS
-# =========================================================
-
-@problems.route(
-    "/topics",
-    methods=["GET"]
-)
-@token_required
-def get_all_topics():
-
-    result = get_all_topics()
-
-    return jsonify(result), 200
-
-# =========================================================
-# MY PROBLEMS
-# =========================================================
-
-@problems.route(
-    "/my-problems",
-    methods=["GET"]
-)
-@token_required
-def my_problems():
-
-    result = get_my_problems(
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# ANALYTICS
-# =========================================================
-
-@problems.route(
-    "/analytics",
-    methods=["GET"]
-)
-@token_required
-def analytics():
-
-    result = compute_analytics(
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# RECOMMENDATIONS
-# =========================================================
-
-@problems.route(
-    "/recommendations",
-    methods=["GET"]
-)
-@token_required
-def recommendations():
-
-    result = get_recommendations(
-
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# READINESS SCORE
-# =========================================================
-
-@problems.route(
-    "/readiness-score",
-    methods=["GET"]
-)
-@token_required
-def readiness():
-
-    result = readiness_score(
-
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# STREAK
-# =========================================================
-
-@problems.route(
-    "/streak",
-    methods=["GET"]
-)
-@token_required
-def streak():
-
-    result = get_streak(
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# TOPIC PROGRESS
-# =========================================================
-
-@problems.route(
-    "/topic-progress",
-    methods=["GET"]
-)
-@token_required
-def topic_progress():
-
-    result = get_topic_progress(
-
-        request.user["email"]
-    )
-
-    return jsonify(result), 200
-
-# =========================================================
-# LEADERBOARD
-# =========================================================
-
-@problems.route(
-    "/leaderboard",
-    methods=["GET"]
-)
-@token_required
-def leaderboard():
-
-    result = get_leaderboard()
-
-    return jsonify(result), 200
-
-# =========================================================
-# DASHBOARD
-# =========================================================
-
-@problems.route(
-    "/dashboard",
-    methods=["GET"]
-)
-@token_required
-def dashboard():
-
-    user_email = request.user["email"]
-
-    stats = get_unified_stats(
-        user_email
-    )
-
-    return jsonify({
-
-        "success": True,
-
-        "dashboard": stats
-    }), 200
-
-# =========================================================
-# GENERATE CHART
-# =========================================================
-
-@problems.route(
-    "/generate-chart",
-    methods=["GET"]
-)
-@token_required
-def generate_chart():
-
-    result = generate_user_chart(
-
-        request.user["email"]
-    )
-
-    status_code = 200 if result.get(
-        "success"
-    ) else 404
-
+    status_code = 200 if result.get("success") else 400
     return jsonify(result), status_code
 
-# =========================================================
-# IMPORT LEETCODE QUESTIONS
-# =========================================================
 
-@problems.route(
-    "/import-leetcode-questions",
-    methods=["POST"]
-)
+@problems.route("/add-question", methods=["POST"])
 @token_required
-def import_leetcode_questions():
-
-    result = import_leetcode_questions()
-
-    return jsonify(result), 200
+@rate_limit(max_requests=20, window_seconds=60)
+def add_question_route():
+    data = request.json or {}
+    result = create_question(data)
+    status_code = 201 if result.get("success") else 400
+    return jsonify(result), status_code

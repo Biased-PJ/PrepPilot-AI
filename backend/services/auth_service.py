@@ -411,3 +411,81 @@ def update_password(
         "message":
             "Password updated successfully"
     }
+
+# =========================================================
+# UPDATE USER PROFILE
+# =========================================================
+
+def update_user_profile(user_email, data):
+
+    user = db.users.find_one({
+        "email": user_email
+    })
+
+    if not user:
+        return {
+            "success": False,
+            "message": "User not found"
+        }
+
+    updates = {}
+
+    name = data.get("name")
+    if name is not None:
+        name = name.strip()
+        if not name:
+            return {
+                "success": False,
+                "message": "Name cannot be empty"
+            }
+        updates["name"] = name
+
+    if not updates:
+        return {
+            "success": False,
+            "message": "No valid fields to update"
+        }
+
+    updates["updated_at"] = datetime.utcnow()
+
+    db.users.update_one(
+        {"email": user_email},
+        {"$set": updates}
+    )
+
+    return get_user_profile(user_email)
+
+# =========================================================
+# REQUEST PASSWORD RESET
+# =========================================================
+
+def request_password_reset(email):
+
+    if not email:
+        return {
+            "success": False,
+            "message": "Email is required"
+        }
+
+    email = email.strip().lower()
+
+    if not validate_email(email):
+        return {
+            "success": False,
+            "message": "Invalid email format"
+        }
+
+    user = db.users.find_one({"email": email})
+
+    if not user:
+        return {
+            "success": True,
+            "message":
+                "If an account exists for this email, reset instructions were sent"
+        }
+
+    return {
+        "success": True,
+        "message":
+            "If an account exists for this email, reset instructions were sent"
+    }

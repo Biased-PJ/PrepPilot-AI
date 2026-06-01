@@ -10,10 +10,13 @@ import random
 
 def serialize_question(question):
 
+    question_id = str(question["_id"])
+
     return {
 
-        "question_id":
-            str(question["_id"]),
+        "id": question_id,
+
+        "question_id": question_id,
 
         "title":
             question.get("title"),

@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -46,33 +46,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await authAPI.login(email, password);
-      const { token, user: userData } = response.data;
+    const response = await authAPI.login(email, password);
+    const { token, user: userData } = response.data;
 
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
-      setUser(userData);
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    setUser(userData);
 
-      router.push('/dashboard');
-    } catch (error) {
-      throw error;
-    }
+    router.push('/dashboard');
   };
 
-  const signup = async (email: string, password: string) => {
-    try {
-      const response = await authAPI.signup(email, password);
-      const { token, user: userData } = response.data;
+  const signup = async (name: string, email: string, password: string) => {
+    const response = await authAPI.signup(name, email, password);
+    const { token, user: userData } = response.data;
 
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
-      setUser(userData);
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    setUser(userData);
 
-      router.push('/dashboard');
-    } catch (error) {
-      throw error;
-    }
+    router.push('/dashboard');
   };
 
   const logout = async () => {

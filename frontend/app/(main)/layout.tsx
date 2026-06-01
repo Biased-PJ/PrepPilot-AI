@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[hsl(222,47%,4%)] text-white">
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 border-b border-white/[0.06] bg-[hsl(222,47%,4%)]/90 backdrop-blur-xl pl-24 pr-4 flex justify-between items-center">
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 border-b border-white/[0.06] bg-[hsl(222,47%,4%)]/90 backdrop-blur-xl px-4 flex justify-between items-center">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
             <Code2 className="w-3.5 h-3.5 text-white" />

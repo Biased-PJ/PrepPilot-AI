@@ -4,12 +4,27 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const APP_SHELL_ROUTES = [
+  "/dashboard",
+  "/problems",
+  "/analytics",
+  "/recommendations",
+  "/integrations",
+  "/leaderboard",
+  "/settings",
+];
+
+function isAppShellRoute(pathname: string) {
+  return APP_SHELL_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 export function BackButton() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 🟢 HIDE if at root OR if path starts with /dashboard
-  if (pathname === "/" || pathname.startsWith("/dashboard")) {
+  if (pathname === "/" || isAppShellRoute(pathname)) {
     return null;
   }
 
@@ -28,7 +43,7 @@ export function BackButton() {
       size="sm"
       onClick={handleBack}
       aria-label="Go back"
-      className="fixed top-4 left-4 z-[100] h-9 gap-1.5 rounded-lg border border-white/[0.06] bg-[hsl(222,47%,4%)]/80 px-3 text-[13px] text-white/50 backdrop-blur-xl hover:bg-white/[0.06] hover:text-white"
+      className="fixed top-4 left-4 z-[100] h-9 gap-1.5 bg-transparent px-2 text-[13px] text-white/50 shadow-none hover:bg-transparent hover:text-white"
     >
       <ArrowLeft className="h-4 w-4" />
       Back

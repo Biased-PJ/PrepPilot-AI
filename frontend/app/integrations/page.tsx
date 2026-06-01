@@ -74,11 +74,12 @@ export default function IntegrationsPage() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // 1. Check existing connection statuses on page load using valid API contract routes
+  // 1. Check existing connection statuses on page load using your clean API layout contracts
   useEffect(() => {
     async function checkExistingStats() {
       try {
-        const res = await platformAPI.syncPlatform("leetcode/stats");
+        // FIXED: Uses your dedicated platform stats endpoint wrapper
+        const res = await platformAPI.getPlatformStats("leetcode");
         if (res.data?.success) {
           if (res.data.verified) {
             setConnected((prev) => [...prev, "leetcode"]);
@@ -105,12 +106,13 @@ export default function IntegrationsPage() {
     setError("");
 
     try {
-      // Fixed: Explicitly typed 'any' to pass strict 'noImplicitAny' compilation configurations
       let response: any;
       if (id === "leetcode") {
         response = await platformAPI.connectLeetCode(handleValue);
       } else if (id === "codeforces") {
         response = await platformAPI.connectCodeforces(handleValue);
+      } else if (id === "codechef") {
+        response = await platformAPI.connectCodeChef(handleValue);
       } else {
         response = await platformAPI.syncPlatform(id);
       }
@@ -135,7 +137,8 @@ export default function IntegrationsPage() {
     setVerifying(id);
     setError("");
     try {
-      const response = await platformAPI.syncPlatform(`${id}/verify`);
+      // FIXED: Uses your dedicated verifyPlatform hook directly to avoid route concatenation errors
+      const response = await platformAPI.verifyPlatform(id);
       if (response.data?.success) {
         setConnected((prev) => [...prev, id]);
         setVerificationCode((prev) => ({ ...prev, [id]: "" }));
@@ -155,7 +158,8 @@ export default function IntegrationsPage() {
     setSyncing(id);
     setError("");
     try {
-      await platformAPI.syncPlatform(`${id}/sync`);
+      // FIXED: Cleans up paths to call the exact /sync target endpoint perfectly
+      await platformAPI.syncPlatform(id);
       alert("Platform statistics successfully updated!");
     } catch (err: any) {
       setError(err.response?.data?.error || "Sync update run failed.");
@@ -164,9 +168,14 @@ export default function IntegrationsPage() {
     }
   };
 
-  const handleDisconnect = () => {
-    setConnected([]);
-    setVerificationCode({});
+  const handleDisconnect = async (id: string) => {
+    try {
+      await platformAPI.disconnectPlatform(id);
+      setConnected((prev) => prev.filter((item) => item !== id));
+      setVerificationCode((prev) => ({ ...prev, [id]: "" }));
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Disconnection failed.");
+    }
   };
 
   return (
@@ -280,7 +289,7 @@ export default function IntegrationsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleDisconnect}
+                    onClick={() => handleDisconnect(p.id)}
                     className="w-full border-red-500/20 text-red-400/80 hover:bg-red-500/10 h-8 text-[12px]"
                   >
                     <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect

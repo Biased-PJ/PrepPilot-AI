@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
-  LayoutDashboard, Code, BarChart3, Lightbulb, Users, Settings, LogOut, Menu, X, Code2, Zap,
+  LayoutDashboard, Code, BarChart3, Lightbulb, Users, Settings, LogOut, Menu, X, Code2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -106,8 +106,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </AnimatePresence>
 
       {/* Main */}
-      <main className="md:ml-[220px] pt-14 md:pt-0">
-        <div className="min-h-screen p-4 md:p-8">{children}</div>
+      <main className="md:ml-[220px] pt-14 md:pt-6 min-h-screen">
+        <div className="w-full min-h-[calc(100vh-3.5rem)] md:min-h-[calc(100vh-1.5rem)] px-4 md:px-6 lg:px-8 py-4 md:py-6">
+          {children}
+        </div>
       </main>
     </div>
   );

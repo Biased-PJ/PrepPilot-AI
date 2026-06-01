@@ -25,7 +25,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(222,47%,4%)] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[hsl(222,47%,4%)] flex items-center justify-center px-4 py-6">
       <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:64px_64px]" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse,rgba(249,115,22,0.06)_0%,transparent_70%)]" />
 

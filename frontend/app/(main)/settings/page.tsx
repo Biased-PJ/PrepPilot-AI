@@ -22,7 +22,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible">
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-[14px] text-white/40 mt-1">Manage your account</p>

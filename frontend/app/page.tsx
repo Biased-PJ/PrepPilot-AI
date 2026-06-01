@@ -26,7 +26,7 @@ export default function Home() {
     <div className="min-h-screen bg-[hsl(222,47%,4%)] text-white overflow-x-hidden">
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/[0.06] bg-[hsl(222,47%,4%)]/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto h-full flex items-center justify-between px-6">
+        <div className="w-full h-full flex items-center justify-between px-4 md:px-6 lg:px-8">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
               <Code2 className="w-4.5 h-4.5 text-white" />
@@ -51,13 +51,13 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section ref={heroRef} className="relative pt-32 pb-20 px-6">
+      <section ref={heroRef} className="relative pt-32 pb-20 px-4 md:px-6 lg:px-8 py-6">
         {/* Grid background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
         {/* Radial glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse,rgba(249,115,22,0.08)_0%,transparent_70%)]" />
 
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative max-w-4xl mx-auto text-center">
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative w-full text-center">
           {/* Badge */}
           <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-[12px] text-white/60 mb-8">
             <Sparkles className="w-3.5 h-3.5 text-orange-400" />
@@ -100,7 +100,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] as const }}
-          className="relative max-w-5xl mx-auto mt-16"
+          className="relative w-full mt-16"
         >
           <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-1.5 shadow-2xl shadow-orange-500/5">
             <div className="rounded-lg bg-[hsl(222,47%,6%)] overflow-hidden">
@@ -145,8 +145,8 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="relative py-24 px-6">
-        <div className="max-w-6xl mx-auto">
+      <section className="relative py-24 px-4 md:px-6 lg:px-8">
+        <div className="w-full">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
               Everything you need to <span className="text-gradient">crush placements</span>
@@ -176,8 +176,8 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      <section className="py-20 px-6 border-y border-white/[0.06]">
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+      <section className="py-20 px-4 md:px-6 lg:px-8 border-y border-white/[0.06]">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="w-full grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { value: '10K+', label: 'Active Users' },
             { value: '500K+', label: 'Problems Tracked' },
@@ -193,8 +193,8 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-24 px-4 md:px-6 lg:px-8">
+        <div className="w-full">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">Loved by developers</h2>
           </motion.div>
@@ -222,8 +222,8 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="max-w-3xl mx-auto text-center glass rounded-2xl p-12 relative overflow-hidden">
+      <section className="py-24 px-4 md:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="w-full text-center glass rounded-2xl p-12 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent" />
           <div className="relative">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">Ready to level up?</h2>
@@ -236,8 +236,8 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] py-12 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className="border-t border-white/[0.06] py-12 px-4 md:px-6 lg:px-8">
+        <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
               <Code2 className="w-3.5 h-3.5 text-white" />

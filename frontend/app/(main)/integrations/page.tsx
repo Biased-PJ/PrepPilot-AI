@@ -192,7 +192,7 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <motion.div
         custom={0}
         variants={fadeUp}

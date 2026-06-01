@@ -15,7 +15,7 @@ const fadeUp = { hidden:{opacity:0,y:16}, visible:(i:number)=>({opacity:1,y:0,tr
 
 export default function RecommendationsPage() {
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <motion.div custom={0} variants={fadeUp} initial="hidden" animate="visible">
         <h1 className="text-2xl font-bold tracking-tight">AI Insights</h1>
         <p className="text-[14px] text-white/40 mt-1">Personalized recommendations for you</p>

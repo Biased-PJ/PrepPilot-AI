@@ -20,6 +20,9 @@ def token_required(route_function):
     @wraps(route_function)
     def wrapper(*args, **kwargs):
 
+        if request.method == 'OPTIONS':
+            return route_function(*args, **kwargs)
+
         # =================================================
         # GET AUTH HEADER
         # =================================================

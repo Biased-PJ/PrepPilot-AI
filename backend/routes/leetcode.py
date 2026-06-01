@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 
+from config import db
+
 from middleware.auth_middleware import token_required
 
 from services.leetcode_service import (
@@ -43,12 +45,33 @@ def disconnect():
     return jsonify(result), 200
 
 
-@leetcode.route("/stats", methods=["GET", "OPTIONS"])
-@token_required
-def stats():
-    result = get_saved_profile(request.user["email"])
-    status = 200 if result.get("success") else 404
-    return jsonify(result), status
+@leetcode.route("/stats", methods=["GET"])
+def get_leetcode_stats():
+    # 1. Fetch user identification details from your JWT auth decorator payload
+    user_email = request.user_email  # Replace with your actual current_user decorator pattern
+
+    # 2. Check if a verified link token exists in the database
+    verification = db.leetcode_verification.find_one({
+        "user_email": user_email,
+        "platform": "leetcode"
+    })
+
+    if not verification:
+        return jsonify({"success": False, "verified": False}), 200
+
+    # 3. Pull historical profile entries if sync steps completed previously
+    saved_profile = db.platform_profiles.find_one({
+        "user_email": user_email,
+        "platform": "leetcode"
+    })
+
+    return jsonify({
+        "success": True,
+        "verified": verification.get("verified", False),
+        "username": verification.get("username", ""),
+        "verification_code": f"PrepPilot-VERIFY-{verification.get('code')}" if not verification.get("verified") else "",
+        "data": saved_profile.get("stats") if saved_profile else None
+    }), 200
 
 
 @leetcode.route("/verify", methods=["POST", "OPTIONS"])

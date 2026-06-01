@@ -74,24 +74,37 @@ export default function IntegrationsPage() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // 1. Check existing connection statuses on page load using your clean API layout contracts
+  // Update the checkExistingStats function inside frontend/app/integrations/page.tsx:
   useEffect(() => {
     async function checkExistingStats() {
       try {
-        // FIXED: Uses your dedicated platform stats endpoint wrapper
         const res = await platformAPI.getPlatformStats("leetcode");
         if (res.data?.success) {
           if (res.data.verified) {
+            // Keep the integration marked as active!
             setConnected((prev) => [...prev, "leetcode"]);
+            if (res.data.username) {
+              setUsernames((prev) => ({
+                ...prev,
+                leetcode: res.data.username,
+              }));
+            }
           } else if (res.data.verification_code) {
+            // Fallback to active waiting code state if they haven't verified yet
             setVerificationCode((prev) => ({
               ...prev,
               leetcode: res.data.verification_code,
             }));
+            if (res.data.username) {
+              setUsernames((prev) => ({
+                ...prev,
+                leetcode: res.data.username,
+              }));
+            }
           }
         }
       } catch (e) {
-        // Safe check skip if endpoints aren't completely populated
+        console.error("Connection link checking failed", e);
       }
     }
     checkExistingStats();

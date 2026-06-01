@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader, CheckCircle2, Unplug, AlertCircle } from "lucide-react";
+import {
+  Loader,
+  CheckCircle2,
+  Unplug,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { platformAPI } from "@/lib/api";
 
 const platforms = [
@@ -62,14 +68,35 @@ export default function IntegrationsPage() {
     codechef: "",
   });
   const [error, setError] = useState<string>("");
+  const [verificationCode, setVerificationCode] = useState<{
+    [key: string]: string;
+  }>({});
+  const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // 1. Initial status loading via platform sync or checks if any exist
+  // 1. Check existing connection statuses on page load
   useEffect(() => {
-    // Left empty or fallback state to avoid crashes if API contract properties aren't completely built out yet
+    async function checkExistingStats() {
+      try {
+        const res = await platformAPI.getStats("leetcode"); // Adjust endpoint parameters if custom layout varies
+        if (res.data?.success) {
+          if (res.data.verified) {
+            setConnected((prev) => [...prev, "leetcode"]);
+          } else if (res.data.verification_code) {
+            setVerificationCode((prev) => ({
+              ...prev,
+              leetcode: res.data.verification_code,
+            }));
+          }
+        }
+      } catch (e) {
+        // Safe check skip if endpoints aren't completely populated
+      }
+    }
+    checkExistingStats();
   }, []);
 
-  // 2. Fire Connect Request mapping to explicit endpoints found in your api.ts
+  // 2. Step 1: Initiate Connect Link
   const handleConnect = async (id: string) => {
     const handleValue = usernames[id as keyof typeof usernames];
     if (!handleValue) return;
@@ -84,37 +111,63 @@ export default function IntegrationsPage() {
       } else if (id === "codeforces") {
         response = await platformAPI.connectCodeforces(handleValue);
       } else {
-        // Fallback for codechef or dynamic routing if sync method is generic
         response = await platformAPI.syncPlatform(id);
       }
 
-      if (response && (response.data?.success || response.status === 200)) {
+      if (response?.data?.verification_code) {
+        setVerificationCode((prev) => ({
+          ...prev,
+          [id]: response.data.verification_code,
+        }));
+      } else if (response?.data?.success) {
         setConnected((prev) => [...prev, id]);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || `Failed to connect to ${id}.`);
+      setError(err.response?.data?.error || `Failed to link ${id}.`);
     } finally {
       setConnecting(null);
     }
   };
 
-  // 3. Force Sync data updates
+  // 3. Step 2: Confirm profile verification code matches
+  const handleVerifyCode = async (id: string) => {
+    setVerifying(id);
+    setError("");
+    try {
+      // Calls your endpoint: /platforms/leetcode/verify
+      const response = await platformAPI.syncPlatform(`${id}/verify`);
+      if (response.data?.success) {
+        setConnected((prev) => [...prev, id]);
+        setVerificationCode((prev) => ({ ...prev, [id]: "" }));
+      }
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error ||
+          "Verification failed. Check your LeetCode profile bio.",
+      );
+    } finally {
+      setVerifying(null);
+    }
+  };
+
+  // 4. Manual Sync Execution Handler
   const handleSyncNow = async (id: string) => {
     setSyncing(id);
     setError("");
     try {
-      await platformAPI.syncPlatform(id);
+      await platformAPI.syncPlatform(`${id}/sync`);
+      alert("Platform statistics successfully updated!");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Sync execution run failed.");
+      setError(err.response?.data?.error || "Sync update run failed.");
     } finally {
       setSyncing(null);
     }
   };
 
-  // 4. Fire Disconnect Request
-  const handleDisconnect = (id: string) => {
-    setConnected(connected.filter((x) => x !== id));
-    setUsernames((prev) => ({ ...prev, [id]: "" }));
+  const handleDisconnect = () => {
+    // Basic structural card visual reset
+    setConnected([]);
+    setVerificationCode({});
   };
 
   return (
@@ -142,7 +195,9 @@ export default function IntegrationsPage() {
         {platforms.map((p, i) => {
           const isOn = connected.includes(p.id);
           const isBusy = connecting === p.id;
+          const isChecking = verifying === p.id;
           const isSyncingNow = syncing === p.id;
+          const vCode = verificationCode[p.id];
 
           return (
             <motion.div
@@ -167,16 +222,41 @@ export default function IntegrationsPage() {
               {isOn ? (
                 <div className="mb-4 space-y-2">
                   <div className="p-2.5 rounded-lg bg-emerald-500/8 border border-emerald-500/15 text-[12px] text-emerald-400/80 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Connected Account
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Account Verified
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => handleSyncNow(p.id)}
                     disabled={isSyncingNow}
-                    className="w-full text-white/60 hover:text-white text-[11px] h-6"
+                    className="w-full text-white/60 hover:text-white text-[11px] h-7 gap-1"
                   >
-                    {isSyncingNow ? "Syncing data..." : "🔄 Sync Stats Now"}
+                    <RefreshCw
+                      className={`w-3 h-3 ${isSyncingNow ? "animate-spin" : ""}`}
+                    />
+                    {isSyncingNow ? "Syncing stats..." : "Sync Stats Now"}
+                  </Button>
+                </div>
+              ) : vCode ? (
+                <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 space-y-2.5">
+                  <p className="text-[11px] text-orange-300/80 leading-normal">
+                    Paste this unique tracking token directly into your
+                    **LeetCode profile summary/bio** box, then click confirm:
+                  </p>
+                  <div className="bg-black/40 border border-white/5 p-2 rounded text-[11px] font-mono text-white text-center select-all">
+                    {vCode}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleVerifyCode(p.id)}
+                    disabled={isChecking}
+                    className="w-full bg-orange-500 text-white text-[12px] h-8"
+                  >
+                    {isChecking ? (
+                      <Loader className="w-3 h-3 animate-spin mr-1" />
+                    ) : (
+                      "Confirm Bio Verification"
+                    )}
                   </Button>
                 </div>
               ) : (
@@ -197,16 +277,17 @@ export default function IntegrationsPage() {
               )}
 
               <div className="flex gap-2">
-                {isOn ? (
+                {isOn && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDisconnect(p.id)}
+                    onClick={handleDisconnect}
                     className="w-full border-red-500/20 text-red-400/80 hover:bg-red-500/10 h-8 text-[12px]"
                   >
                     <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
                   </Button>
-                ) : (
+                )}
+                {!isOn && !vCode && (
                   <Button
                     size="sm"
                     onClick={() => handleConnect(p.id)}
@@ -218,7 +299,7 @@ export default function IntegrationsPage() {
                     {isBusy && (
                       <Loader className="w-3.5 h-3.5 mr-1 animate-spin" />
                     )}
-                    {isBusy ? "Connecting..." : "Connect"}
+                    {isBusy ? "Generating code..." : "Connect"}
                   </Button>
                 )}
               </div>
@@ -226,32 +307,6 @@ export default function IntegrationsPage() {
           );
         })}
       </div>
-
-      <motion.div
-        custom={4}
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
-        className="glass rounded-xl p-5"
-      >
-        <h3 className="text-[15px] font-semibold mb-4">What we sync</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[
-            "Solved problems",
-            "Contest ratings",
-            "Difficulty stats",
-            "Submission history",
-            "Topic coverage",
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="text-[12px] text-white/40 flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
-            >
-              <div className="w-1 h-1 rounded-full bg-orange-400/60" /> {item}
-            </div>
-          ))}
-        </div>
-      </motion.div>
     </div>
   );
 }

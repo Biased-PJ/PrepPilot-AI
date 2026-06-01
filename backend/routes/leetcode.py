@@ -12,6 +12,8 @@ from services.leetcode_service import (
     remove_account,
 )
 
+from services.unified_profile import serialize_profile
+
 leetcode = Blueprint("leetcode", __name__)
 
 
@@ -46,11 +48,12 @@ def disconnect():
 
 
 @leetcode.route("/stats", methods=["GET"])
+@token_required  #  Added auth protection guard
 def get_leetcode_stats():
-    # 1. Fetch user identification details from your JWT auth decorator payload
-    user_email = request.user_email  # Replace with your actual current_user decorator pattern
+    #  Correctly extract email from the verified token dict
+    user_email = request.user["email"]
 
-    # 2. Check if a verified link token exists in the database
+    # Check if a verification process was started or completed
     verification = db.leetcode_verification.find_one({
         "user_email": user_email,
         "platform": "leetcode"
@@ -59,7 +62,7 @@ def get_leetcode_stats():
     if not verification:
         return jsonify({"success": False, "verified": False}), 200
 
-    # 3. Pull historical profile entries if sync steps completed previously
+    # Fetch profile stats from the sync snapshot collection
     saved_profile = db.platform_profiles.find_one({
         "user_email": user_email,
         "platform": "leetcode"
@@ -70,7 +73,7 @@ def get_leetcode_stats():
         "verified": verification.get("verified", False),
         "username": verification.get("username", ""),
         "verification_code": f"PrepPilot-VERIFY-{verification.get('code')}" if not verification.get("verified") else "",
-        "data": saved_profile.get("stats") if saved_profile else None
+        "profile": serialize_profile(saved_profile) if saved_profile else None
     }), 200
 
 

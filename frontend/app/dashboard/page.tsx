@@ -70,46 +70,37 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadLiveDashboardMetrics() {
       try {
-        // 1. Fetch live aggregated streaks and heatmaps
+        // 1. Fetch our master unified stats object directly
+        const dashboardRes = await analyticsAPI.getDashboard();
         const activityRes = await analyticsAPI.getActivity();
-        // 2. Fetch specific synced LeetCode parameters directly from MongoDB
         const leetcodeRes = await platformAPI.getPlatformStats("leetcode");
 
-        let total = 0,
-          easy = 0,
-          medium = 0,
-          hard = 0,
-          recent: any[] = [];
+        if (dashboardRes.data?.success && dashboardRes.data?.dashboard) {
+          const d = dashboardRes.data.dashboard;
 
-        if (leetcodeRes.data?.success && leetcodeRes.data?.profile?.stats) {
-          const s = leetcodeRes.data.profile.stats;
-          easy = s.easy || 0;
-          medium = s.medium || 0;
-          hard = s.hard || 0;
-          total = s.total || easy + medium + hard;
+          let recent: any[] = [];
+          if (
+            leetcodeRes.data?.success &&
+            leetcodeRes.data?.profile?.metadata?.recent_submissions
+          ) {
+            recent = leetcodeRes.data.profile.metadata.recent_submissions.slice(
+              0,
+              3,
+            );
+          }
+
+          setDashboardStats({
+            totalSolved: d.total || 0,
+            easySolved: d.easy || 0,
+            mediumSolved: d.medium || 0,
+            hardSolved: d.hard || 0,
+            currentStreak: activityRes.data?.activity?.current_streak || 0,
+            readiness: 72, // Tie to your readiness endpoint if needed
+            recentSubmissions: recent,
+          });
         }
-
-        if (
-          leetcodeRes.data?.success &&
-          leetcodeRes.data?.profile?.metadata?.recent_submissions
-        ) {
-          recent = leetcodeRes.data.profile.metadata.recent_submissions.slice(
-            0,
-            3,
-          );
-        }
-
-        setDashboardStats({
-          totalSolved: total,
-          easySolved: easy,
-          mediumSolved: medium,
-          hardSolved: hard,
-          currentStreak: activityRes.data?.activity?.current_streak || 0,
-          readiness: dashboardStats.readiness, // fallback placeholder
-          recentSubmissions: recent,
-        });
       } catch (err) {
-        console.error("Dashboard backend fetch failure:", err);
+        console.error("Unified telemetry calculation dropped:", err);
       } finally {
         setLoading(false);
       }

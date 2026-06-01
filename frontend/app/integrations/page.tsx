@@ -78,7 +78,6 @@ export default function IntegrationsPage() {
   useEffect(() => {
     async function checkExistingStats() {
       try {
-        // Fixed: Swapped out unexported getStats wrapper for valid syncPlatform caller route string
         const res = await platformAPI.syncPlatform("leetcode/stats");
         if (res.data?.success) {
           if (res.data.verified) {
@@ -106,7 +105,8 @@ export default function IntegrationsPage() {
     setError("");
 
     try {
-      let response;
+      // Fixed: Explicitly typed 'any' to pass strict 'noImplicitAny' compilation configurations
+      let response: any;
       if (id === "leetcode") {
         response = await platformAPI.connectLeetCode(handleValue);
       } else if (id === "codeforces") {

@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -32,12 +32,12 @@ export default api;
 
 export const authAPI = {
   signup: (email: string, password: string) =>
-    api.post('/auth/signup', { email, password }),
+    api.post('/signup', { email, password }),
   login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-  logout: () => api.post('/auth/logout'),
+    api.post('/login', { email, password }),
+  logout: () => api.post('/logout'),
   resetPassword: (email: string) =>
-    api.post('/auth/reset-password', { email }),
+    api.post('/reset-password', { email }),
 };
 
 export const problemsAPI = {

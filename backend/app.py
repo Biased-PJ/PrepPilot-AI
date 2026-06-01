@@ -50,15 +50,17 @@ CORS(app)
 # REGISTER BLUEPRINTS
 # =========================================================
 
-app.register_blueprint(auth, url_prefix="/api/auth")
+# 1. REMOVED url_prefix ENTIRELY: Now routes like /signup and /login are at the root level
+app.register_blueprint(auth)
 
-app.register_blueprint(problems, url_prefix="/api/problems")
+# 2. CLEANED UP OTHER BLUEPRINTS: Removed "/api" to match your frontend api.ts setup
+app.register_blueprint(problems, url_prefix="/problems")
 
-app.register_blueprint(leetcode, url_prefix="/api/platforms/leetcode")
+app.register_blueprint(leetcode, url_prefix="/platforms/leetcode")
 
-app.register_blueprint(codeforces, url_prefix="/api/platforms/codeforces")
+app.register_blueprint(codeforces, url_prefix="/platforms/codeforces")
 
-app.register_blueprint(codechef, url_prefix="/api/platforms/codechef")
+app.register_blueprint(codechef, url_prefix="/platforms/codechef")
 
 # =========================================================
 # REGISTER MIDDLEWARE

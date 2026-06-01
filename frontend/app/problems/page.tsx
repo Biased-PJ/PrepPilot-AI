@@ -55,38 +55,73 @@ export default function ProblemsPage() {
     async function fetchLiveProblems() {
       setLoading(true);
       try {
-        // 1. Grab your authentication token safely from localStorage
         const token = localStorage.getItem("token");
 
-        // 2. Build parameters to match your backend's exact _question_filters() keys
         let url = `http://localhost:5000/api/problems?page=${page}&limit=${perPage}`;
-        if (search) url += `&search=${encodeURIComponent(search)}`;
-
-        // Match uppercase mapping logic for database indexes
+        if (search.trim())
+          url += `&search=${encodeURIComponent(search.trim())}`;
         if (diff.length === 1) url += `&difficulty=${diff[0].toUpperCase()}`;
-        if (plat.length === 1) url += `&platform=${plat[0]}`;
+        if (plat.length === 1)
+          url += `&platform=${encodeURIComponent(plat[0])}`;
 
         const res = await fetch(url, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            // 🔐 Pass auth credentials directly to pass the @token_required wrapper!
             Authorization: `Bearer ${token}`,
           },
         });
 
         const data = await res.json();
+        console.log("🔍 API Response Payload JSON:", data);
 
-        if (data.success) {
-          // Process backend list return array structural model
-          setProblems(data.problems || []);
-          setTotalProblems(data.total_problems || 0);
-          setSolvedCount(data.total_solved || 0);
+        // Standardize keys dynamically across base services vs progress decorators
+        if (
+          data &&
+          (data.questions || data.problems || Array.isArray(data.data))
+        ) {
+          const rawQuestions =
+            data.questions || data.problems || data.data || [];
+          const totalCount =
+            data.total_questions ?? data.total_problems ?? data.total ?? 0;
+          const solvedCountFromBackend =
+            data.total_solved ??
+            data.solved_count ??
+            data.total_questions_solved ??
+            0;
+
+          const formatted = rawQuestions.map((p: any) => ({
+            id:
+              p.id ||
+              p.question_id ||
+              p._id?.toString() ||
+              String(Math.random()),
+            title: p.title || "Untitled Problem",
+            title_slug: p.slug || p.title_slug || "",
+            platform: p.platform || "LeetCode",
+            difficulty: (p.difficulty || "EASY").toUpperCase(),
+            topic: p.topic || "General",
+            tags: Array.isArray(p.tags) ? p.tags : [],
+            solved: p.solved || false,
+            bookmarked: p.bookmarked || false,
+            company:
+              p.company ||
+              (Array.isArray(p.companies) && p.companies.length > 0
+                ? p.companies[0]
+                : "N/A"),
+          }));
+
+          setProblems(formatted);
+          setTotalProblems(totalCount);
+          setSolvedCount(solvedCountFromBackend);
         } else {
-          console.error("⚠️ Backend returned failure:", data.message);
+          setProblems([]);
+          setTotalProblems(0);
+          console.error("⚠️ Response missing payload structures:", data);
         }
       } catch (err) {
         console.error("❌ Failed to contact backend data stream:", err);
+        setProblems([]);
       } finally {
         setLoading(false);
       }
@@ -106,7 +141,7 @@ export default function ProblemsPage() {
     val: string,
     setter: (v: string[]) => void,
   ) => {
-    setter(arr.includes(val) ? [] : [val]); // Keep single filter tracking for clean pagination queries
+    setter(arr.includes(val) ? [] : [val]);
     setPage(1);
   };
 
@@ -122,7 +157,7 @@ export default function ProblemsPage() {
         </p>
       </motion.div>
 
-      {/* Search + filters */}
+      {/* Search + Filters */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -132,7 +167,7 @@ export default function ProblemsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-white/20" />
           <Input
-            placeholder="Search active live index database..."
+            placeholder="Search questions, topics, or tags..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -147,7 +182,11 @@ export default function ProblemsPage() {
             <button
               key={d}
               onClick={() => toggle(diff, d, setDiff)}
-              className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${diff.includes(d) ? diffColor[d.toUpperCase()] : "bg-white/[0.03] text-white/30 border-white/[0.06] hover:border-white/[0.12]"}`}
+              className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${
+                diff.includes(d)
+                  ? diffColor[d.toUpperCase()]
+                  : "bg-white/[0.03] text-white/30 border-white/[0.06] hover:border-white/[0.12]"
+              }`}
             >
               {d}
             </button>
@@ -157,22 +196,27 @@ export default function ProblemsPage() {
             <button
               key={p}
               onClick={() => toggle(plat, p, setPlat)}
-              className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${plat.includes(p) ? platformColor[p] : "bg-white/[0.03] text-white/30 border-white/[0.06] hover:border-white/[0.12]"}`}
+              className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${
+                plat.includes(p)
+                  ? platformColor[p]
+                  : "bg-white/[0.03] text-white/30 border-white/[0.06] hover:border-white/[0.12]"
+              }`}
             >
               {p}
             </button>
           ))}
 
-          {(diff.length > 0 || plat.length > 0) && (
+          {(diff.length > 0 || plat.length > 0 || search.length > 0) && (
             <button
               onClick={() => {
                 setDiff([]);
                 setPlat([]);
+                setSearch("");
                 setPage(1);
               }}
               className="px-2 py-1 text-[12px] text-white/30 hover:text-white/60 flex items-center gap-1"
             >
-              <X className="w-3 h-3" /> Clear
+              <X className="w-3 h-3" /> Clear Filters
             </button>
           )}
         </div>
@@ -189,7 +233,7 @@ export default function ProblemsPage() {
           <div className="flex items-center justify-center p-12 text-white/40 gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-orange-400" />
             <span className="text-[13px]">
-              Querying global MongoDB indexes...
+              Querying application clusters...
             </span>
           </div>
         ) : problems.length > 0 ? (
@@ -220,7 +264,7 @@ export default function ProblemsPage() {
                   <span
                     className={`px-1.5 py-0.5 rounded text-[10px] ${platformColor[p.platform] || platformColor["LeetCode"]}`}
                   >
-                    {p.platform || "LeetCode"}
+                    {p.platform}
                   </span>
                   {p.tags &&
                     p.tags.slice(0, 3).map((t) => (
@@ -247,7 +291,7 @@ export default function ProblemsPage() {
         )}
       </motion.div>
 
-      {/* Pagination component layout logic */}
+      {/* Pagination Logic */}
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-between text-[13px] text-white/30">
           <span>
@@ -265,21 +309,38 @@ export default function ProblemsPage() {
               <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
 
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum = page <= 3 ? i + 1 : page - 3 + i;
-              if (pageNum > totalPages || pageNum <= 0) return null;
-              return (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === page ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setPage(pageNum)}
-                  className={`h-7 px-2.5 text-[12px] ${pageNum === page ? "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30" : ""}`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(
+                (pageNum) =>
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  Math.abs(pageNum - page) <= 1,
+              )
+              .map((pageNum, idx, arr) => {
+                const elements = [];
+                if (idx > 0 && pageNum - arr[idx - 1] > 1) {
+                  elements.push(
+                    <span
+                      key={`ellipsis-${pageNum}`}
+                      className="px-1 text-white/10"
+                    >
+                      ...
+                    </span>,
+                  );
+                }
+                elements.push(
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === page ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setPage(pageNum)}
+                    className={`h-7 px-2.5 text-[12px] ${pageNum === page ? "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30" : ""}`}
+                  >
+                    {pageNum}
+                  </Button>,
+                );
+                return elements;
+              })}
 
             <Button
               variant="ghost"

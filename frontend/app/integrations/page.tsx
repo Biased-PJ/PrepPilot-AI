@@ -74,11 +74,12 @@ export default function IntegrationsPage() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // 1. Check existing connection statuses on page load
+  // 1. Check existing connection statuses on page load using valid API contract routes
   useEffect(() => {
     async function checkExistingStats() {
       try {
-        const res = await platformAPI.getStats("leetcode"); // Adjust endpoint parameters if custom layout varies
+        // Fixed: Swapped out unexported getStats wrapper for valid syncPlatform caller route string
+        const res = await platformAPI.syncPlatform("leetcode/stats");
         if (res.data?.success) {
           if (res.data.verified) {
             setConnected((prev) => [...prev, "leetcode"]);
@@ -134,7 +135,6 @@ export default function IntegrationsPage() {
     setVerifying(id);
     setError("");
     try {
-      // Calls your endpoint: /platforms/leetcode/verify
       const response = await platformAPI.syncPlatform(`${id}/verify`);
       if (response.data?.success) {
         setConnected((prev) => [...prev, id]);
@@ -165,7 +165,6 @@ export default function IntegrationsPage() {
   };
 
   const handleDisconnect = () => {
-    // Basic structural card visual reset
     setConnected([]);
     setVerificationCode({});
   };

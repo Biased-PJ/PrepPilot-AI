@@ -15,6 +15,8 @@ from routes.codechef import codechef
 from middleware.error_middleware import register_error_handlers
 from middleware.request_logger import register_request_logger
 
+from admin import admin_bp
+
 app = Flask(__name__)
 
 app.config["SECRET_KEY"] = os.getenv(
@@ -40,6 +42,7 @@ app.register_blueprint(problems, url_prefix="/problems")
 app.register_blueprint(analytics, url_prefix="/analytics")
 app.register_blueprint(recommendations, url_prefix="/recommendations")
 app.register_blueprint(leaderboard, url_prefix="/leaderboard")
+app.register_blueprint(admin_bp)
 
 app.register_blueprint(leetcode, url_prefix="/platforms/leetcode")
 app.register_blueprint(codeforces, url_prefix="/platforms/codeforces")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ interface Problem {
   title: string;
   title_slug: string;
   platform: string;
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  difficulty: string;
   topic: string;
   tags: string[];
   solved: boolean;
@@ -46,41 +46,44 @@ export default function ProblemsPage() {
   const [diff, setDiff] = useState<string[]>([]);
   const [plat, setPlat] = useState<string[]>([]);
 
-  // Database driven pagination states
   const [page, setPage] = useState(1);
   const [totalProblems, setTotalProblems] = useState(0);
-  const perPage = 20; // 20 per page feels much cleaner for a pool of 4,000
+  const [solvedCount, setSolvedCount] = useState(0);
+  const perPage = 20;
 
-  // 📡 Fetch live data directly from your local Flask API when pages or filters shift
   useEffect(() => {
     async function fetchLiveProblems() {
       setLoading(true);
       try {
-        // Construct standard query parameters dynamically
+        // 1. Grab your authentication token safely from localStorage
+        const token = localStorage.getItem("token");
+
+        // 2. Build parameters to match your backend's exact _question_filters() keys
         let url = `http://localhost:5000/api/problems?page=${page}&limit=${perPage}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
-        if (diff.length === 1) url += `&difficulty=${diff[0].toUpperCase()}`; // Matches Flask formatting
 
-        const res = await fetch(url);
+        // Match uppercase mapping logic for database indexes
+        if (diff.length === 1) url += `&difficulty=${diff[0].toUpperCase()}`;
+        if (plat.length === 1) url += `&platform=${plat[0]}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // 🔐 Pass auth credentials directly to pass the @token_required wrapper!
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await res.json();
 
         if (data.success) {
-          // Map incoming MongoDB schema properties safely onto client visual props
-          const formatted = data.problems.map((p: any) => ({
-            id: p.id,
-            title: p.title,
-            title_slug: p.title_slug,
-            platform: p.platform || "LeetCode", // Default layout assignment fallback
-            difficulty: p.difficulty,
-            topic: p.topic,
-            tags: p.tags,
-            solved: p.solved || false,
-            bookmarked: p.bookmarked || false,
-            company: p.company || "N/A",
-          }));
-
-          setProblems(formatted);
-          setTotalProblems(data.total_problems); // This will set your "3948" count dynamically!
+          // Process backend list return array structural model
+          setProblems(data.problems || []);
+          setTotalProblems(data.total_problems || 0);
+          setSolvedCount(data.total_solved || 0);
+        } else {
+          console.error("⚠️ Backend returned failure:", data.message);
         }
       } catch (err) {
         console.error("❌ Failed to contact backend data stream:", err);
@@ -89,7 +92,6 @@ export default function ProblemsPage() {
       }
     }
 
-    // Bounce delay mechanism to prevent hammering backend on every single keyboard letter stroke
     const delayDebounce = setTimeout(() => {
       fetchLiveProblems();
     }, 300);
@@ -104,7 +106,7 @@ export default function ProblemsPage() {
     val: string,
     setter: (v: string[]) => void,
   ) => {
-    setter(arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]);
+    setter(arr.includes(val) ? [] : [val]); // Keep single filter tracking for clean pagination queries
     setPage(1);
   };
 
@@ -116,8 +118,7 @@ export default function ProblemsPage() {
       >
         <h1 className="text-2xl font-bold tracking-tight">Problems</h1>
         <p className="text-[14px] text-white/40 mt-1">
-          {totalProblems} total questions locked inside database &middot;{" "}
-          {problems.filter((p) => p.solved).length} solved here
+          {totalProblems} problems &middot; {solvedCount} solved
         </p>
       </motion.div>
 
@@ -142,7 +143,6 @@ export default function ProblemsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {/* Difficulty pills */}
           {["Easy", "Medium", "Hard"].map((d) => (
             <button
               key={d}
@@ -178,7 +178,7 @@ export default function ProblemsPage() {
         </div>
       </motion.div>
 
-      {/* Problem list handling state logic */}
+      {/* Main Container Wrapper */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -213,23 +213,24 @@ export default function ProblemsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${diffColor[p.difficulty]}`}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${diffColor[p.difficulty] || diffColor["EASY"]}`}
                   >
                     {p.difficulty}
                   </span>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] ${platformColor[p.platform]}`}
+                    className={`px-1.5 py-0.5 rounded text-[10px] ${platformColor[p.platform] || platformColor["LeetCode"]}`}
                   >
-                    {p.platform}
+                    {p.platform || "LeetCode"}
                   </span>
-                  {p.tags.slice(0, 4).map((t) => (
-                    <span
-                      key={t}
-                      className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.03] text-white/20"
-                    >
-                      {t}
-                    </span>
-                  ))}
+                  {p.tags &&
+                    p.tags.slice(0, 3).map((t) => (
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.03] text-white/20"
+                      >
+                        {t}
+                      </span>
+                    ))}
                 </div>
               </div>
               <button className="p-1.5 rounded-lg hover:bg-white/[0.04] flex-shrink-0">
@@ -246,7 +247,7 @@ export default function ProblemsPage() {
         )}
       </motion.div>
 
-      {/* Dynamic database scale pagination tracker */}
+      {/* Pagination component layout logic */}
       {!loading && totalPages > 1 && (
         <div className="flex items-center justify-between text-[13px] text-white/30">
           <span>
@@ -264,10 +265,9 @@ export default function ProblemsPage() {
               <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
 
-            {/* Display close context pagination window */}
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum = page <= 3 ? i + 1 : page - 3 + i;
-              if (pageNum > totalPages) return null;
+              if (pageNum > totalPages || pageNum <= 0) return null;
               return (
                 <Button
                   key={pageNum}

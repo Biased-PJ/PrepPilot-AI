@@ -1,20 +1,23 @@
-'use client';
+"use client";
 
-import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function BackButton() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === '/') return null;
+  // 🟢 HIDE if at root OR if path starts with /dashboard
+  if (pathname === "/" || pathname.startsWith("/dashboard")) {
+    return null;
+  }
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
-      router.push('/');
+      router.push("/");
     }
   };
 

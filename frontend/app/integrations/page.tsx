@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader, CheckCircle2, Unplug, AlertCircle } from "lucide-react";
-import { platformsAPI } from "@/lib/api"; // Importing your real API contract
+import { platformAPI } from "@/lib/api"; // Fixed: Using singular platformAPI
 
 const platforms = [
   {
@@ -72,7 +72,7 @@ export default function IntegrationsPage() {
     async function loadStats() {
       for (const p of platforms) {
         try {
-          const res = await platformsAPI.getStats(p.id);
+          const res = await platformAPI.getStats(p.id);
           if (res.data && res.data.success) {
             setConnected((prev) => [...prev, p.id]);
             setUsernames((prev) => ({
@@ -97,7 +97,7 @@ export default function IntegrationsPage() {
     setError("");
 
     try {
-      const response = await platformsAPI.connect(id, handleValue);
+      const response = await platformAPI.connect(id, handleValue);
       if (response.data?.verification_code) {
         // Save the verification text to show the user
         setVerificationCode((prev) => ({
@@ -120,7 +120,7 @@ export default function IntegrationsPage() {
     setVerifying(id);
     setError("");
     try {
-      const response = await platformsAPI.verify(id);
+      const response = await platformAPI.verify(id);
       if (response.data?.success) {
         setConnected((prev) => [...prev, id]);
         setVerificationCode((prev) => ({ ...prev, [id]: "" }));
@@ -139,7 +139,7 @@ export default function IntegrationsPage() {
   const handleDisconnect = async (id: string) => {
     setError("");
     try {
-      await platformsAPI.disconnect(id);
+      await platformAPI.disconnect(id);
       setConnected(connected.filter((x) => x !== id));
       setUsernames((prev) => ({ ...prev, [id]: "" }));
       setVerificationCode((prev) => ({ ...prev, [id]: "" }));

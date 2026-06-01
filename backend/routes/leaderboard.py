@@ -7,6 +7,8 @@ from services.leaderboard_service import get_leaderboard
 leaderboard = Blueprint("leaderboard", __name__)
 
 
+# Inside your routes/leaderboard.py file:
+
 @leaderboard.route("", methods=["GET"])
 @leaderboard.route("/", methods=["GET"])
 @token_required
@@ -16,7 +18,10 @@ def list_leaderboard():
     offset = (page - 1) * limit
     fetch_limit = offset + limit
 
-    result = get_leaderboard(limit=fetch_limit)
+    # Pass the active token session email down into the service helper execution
+    current_email = request.user.get("email") if hasattr(request, "user") else None
+    
+    result = get_leaderboard(limit=fetch_limit, current_user_email=current_email)
     entries = result.get("leaderboard", [])
     paged = entries[offset:offset + limit]
 

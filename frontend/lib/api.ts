@@ -77,8 +77,9 @@ export const analyticsAPI = {
   getTopicMastery: () => api.get("/analytics/topic-mastery"),
   getReadiness: () => api.get("/analytics/readiness"),
   getActivity: () => api.get("/analytics/activity"),
-  // Added to clear the Vercel compilation type mismatch error
-  getLeaderboard: () => api.get("/analytics/leaderboard"),
+
+  //  FIXED: Pointing to the correct standalone backend route base path
+  getLeaderboard: () => api.get("/leaderboard"),
 };
 
 export const platformAPI = {

@@ -13,11 +13,20 @@ from services.leetcode_service import (
 leetcode = Blueprint("leetcode", __name__)
 
 
+# --- GLOBAL OPTIONS BYPASS FOR CORS PREFLIGHTS ---
+@leetcode.before_request
+def handle_options_preflight():
+    """Intersects browser CORS safety checks before token middleware can block them."""
+    if request.method == "OPTIONS":
+        return "", 200
+
+
 def _username_from_body(data):
     return data.get("username") or data.get("handle")
 
 
-@leetcode.route("/connect", methods=["POST"])
+# Explicitly add 'OPTIONS' to your routing methods arrays
+@leetcode.route("/connect", methods=["POST", "OPTIONS"])
 @token_required
 def connect():
     data = request.json or {}
@@ -27,14 +36,14 @@ def connect():
     return jsonify(result), status
 
 
-@leetcode.route("/disconnect", methods=["POST"])
+@leetcode.route("/disconnect", methods=["POST", "OPTIONS"])
 @token_required
 def disconnect():
     result = remove_account(request.user["email"])
     return jsonify(result), 200
 
 
-@leetcode.route("/stats", methods=["GET"])
+@leetcode.route("/stats", methods=["GET", "OPTIONS"])
 @token_required
 def stats():
     result = get_saved_profile(request.user["email"])
@@ -42,7 +51,7 @@ def stats():
     return jsonify(result), status
 
 
-@leetcode.route("/verify", methods=["POST"])
+@leetcode.route("/verify", methods=["POST", "OPTIONS"])
 @token_required
 def verify():
     result = verify_account(request.user["email"])
@@ -50,7 +59,7 @@ def verify():
     return jsonify(result), status
 
 
-@leetcode.route("/sync", methods=["POST"])
+@leetcode.route("/sync", methods=["POST", "OPTIONS"])
 @token_required
 def sync():
     result = sync_profile(request.user["email"])

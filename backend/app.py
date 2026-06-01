@@ -22,7 +22,18 @@ app.config["SECRET_KEY"] = os.getenv(
     "preppilot_secret"
 )
 
-CORS(app)
+# Explicitly configure CORS to allow preflight OPTIONS requests across all prefixes
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://prep-pilot-ai-eta.vercel.app",
+            "https://prep-pilot-ai.vercel.app",
+            "http://localhost:3000"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 app.register_blueprint(auth)
 app.register_blueprint(problems, url_prefix="/problems")

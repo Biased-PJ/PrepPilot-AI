@@ -1,15 +1,22 @@
 import axios, { AxiosError } from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Dynamically fetch variable to handle compile-time environment switches safely
+const getBaseUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return "http://localhost:5000";
+};
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use((config) => {
+  // FIXED: Using standard 'auth_token' consistently across files
   const token =
     typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
   if (token) {
@@ -77,8 +84,6 @@ export const analyticsAPI = {
   getTopicMastery: () => api.get("/analytics/topic-mastery"),
   getReadiness: () => api.get("/analytics/readiness"),
   getActivity: () => api.get("/analytics/activity"),
-
-  //  FIXED: Pointing to the correct standalone backend route base path
   getLeaderboard: () => api.get("/leaderboard"),
 };
 

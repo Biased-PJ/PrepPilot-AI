@@ -746,6 +746,13 @@ def list_questions_with_user_state(user_email, page, limit, filters):
             progress and progress.get("bookmarked")
         )
 
+    print("====== DEBUGGING PROBLEMS ENDPOINT ======")
+    print(f"User Email: {user_email}")
+    print(f"Filters received: {filters}")
+    print(f"Result dictionary from question_service: {result}")
+    print(f"Number of questions found: {len(result.get('questions', []))}")
+    print("=========================================")
+    
     return {
         "success": True,
         **result

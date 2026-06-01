@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { problemsAPI } from "@/lib/api"; // 🟢 Added clean relative library path match block hook
 import {
   Search,
   BookmarkIcon,
@@ -55,27 +56,16 @@ export default function ProblemsPage() {
     async function fetchLiveProblems() {
       setLoading(true);
       try {
-        const token = localStorage.getItem("token");
-
-        let url = `http://localhost:5000/api/problems?page=${page}&limit=${perPage}`;
-        if (search.trim())
-          url += `&search=${encodeURIComponent(search.trim())}`;
-        if (diff.length === 1) url += `&difficulty=${diff[0].toUpperCase()}`;
-        if (plat.length === 1)
-          url += `&platform=${encodeURIComponent(plat[0])}`;
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+        // 🟢 FIXED: Using central problemsAPI module instead of manual hardcoded fetch loops
+        const response = await problemsAPI.getProblems(page, perPage, {
+          search: search.trim() || undefined,
+          difficulty: diff.length === 1 ? diff[0].toUpperCase() : undefined,
+          platform: plat.length === 1 ? plat[0] : undefined,
         });
 
-        const data = await res.json();
+        const data = response.data;
         console.log("🔍 API Response Payload JSON:", data);
 
-        // Standardize keys dynamically across base services vs progress decorators
         if (
           data &&
           (data.questions || data.problems || Array.isArray(data.data))

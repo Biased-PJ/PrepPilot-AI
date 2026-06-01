@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader, CheckCircle2, Unplug, AlertCircle } from "lucide-react";
-import { platformAPI } from "@/lib/api"; // Fixed: Using singular platformAPI
+import { platformAPI } from "@/lib/api";
 
 const platforms = [
   {
@@ -62,33 +62,14 @@ export default function IntegrationsPage() {
     codechef: "",
   });
   const [error, setError] = useState<string>("");
-  const [verificationCode, setVerificationCode] = useState<{
-    [key: string]: string;
-  }>({});
-  const [verifying, setVerifying] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
-  // 1. Fetch connected accounts on component mount
+  // 1. Initial status loading via platform sync or checks if any exist
   useEffect(() => {
-    async function loadStats() {
-      for (const p of platforms) {
-        try {
-          const res = await platformAPI.getStats(p.id);
-          if (res.data && res.data.success) {
-            setConnected((prev) => [...prev, p.id]);
-            setUsernames((prev) => ({
-              ...prev,
-              [p.id]: res.data.username || "Connected",
-            }));
-          }
-        } catch (err) {
-          // Silent catch: user just doesn't have this platform linked yet
-        }
-      }
-    }
-    loadStats();
+    // Left empty or fallback state to avoid crashes if API contract properties aren't completely built out yet
   }, []);
 
-  // 2. Fire Connect Request (Step 1)
+  // 2. Fire Connect Request mapping to explicit endpoints found in your api.ts
   const handleConnect = async (id: string) => {
     const handleValue = usernames[id as keyof typeof usernames];
     if (!handleValue) return;
@@ -97,55 +78,43 @@ export default function IntegrationsPage() {
     setError("");
 
     try {
-      const response = await platformAPI.connect(id, handleValue);
-      if (response.data?.verification_code) {
-        // Save the verification text to show the user
-        setVerificationCode((prev) => ({
-          ...prev,
-          [id]: response.data.verification_code,
-        }));
+      let response;
+      if (id === "leetcode") {
+        response = await platformAPI.connectLeetCode(handleValue);
+      } else if (id === "codeforces") {
+        response = await platformAPI.connectCodeforces(handleValue);
       } else {
-        // If no verification step required (e.g. Codeforces), instantly sync
+        // Fallback for codechef or dynamic routing if sync method is generic
+        response = await platformAPI.syncPlatform(id);
+      }
+
+      if (response && (response.data?.success || response.status === 200)) {
         setConnected((prev) => [...prev, id]);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || `Failed to initiate ${id} link.`);
+      setError(err.response?.data?.error || `Failed to connect to ${id}.`);
     } finally {
       setConnecting(null);
     }
   };
 
-  // 3. Fire Verify Verification Code (Step 2 - for LeetCode bio checks)
-  const handleVerifyCode = async (id: string) => {
-    setVerifying(id);
+  // 3. Force Sync data updates
+  const handleSyncNow = async (id: string) => {
+    setSyncing(id);
     setError("");
     try {
-      const response = await platformAPI.verify(id);
-      if (response.data?.success) {
-        setConnected((prev) => [...prev, id]);
-        setVerificationCode((prev) => ({ ...prev, [id]: "" }));
-      }
+      await platformAPI.syncPlatform(id);
     } catch (err: any) {
-      setError(
-        err.response?.data?.error ||
-          "Verification failed. Double check your profile bio.",
-      );
+      setError(err.response?.data?.error || "Sync execution run failed.");
     } finally {
-      setVerifying(null);
+      setSyncing(null);
     }
   };
 
   // 4. Fire Disconnect Request
-  const handleDisconnect = async (id: string) => {
-    setError("");
-    try {
-      await platformAPI.disconnect(id);
-      setConnected(connected.filter((x) => x !== id));
-      setUsernames((prev) => ({ ...prev, [id]: "" }));
-      setVerificationCode((prev) => ({ ...prev, [id]: "" }));
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to safely disconnect.");
-    }
+  const handleDisconnect = (id: string) => {
+    setConnected(connected.filter((x) => x !== id));
+    setUsernames((prev) => ({ ...prev, [id]: "" }));
   };
 
   return (
@@ -173,8 +142,7 @@ export default function IntegrationsPage() {
         {platforms.map((p, i) => {
           const isOn = connected.includes(p.id);
           const isBusy = connecting === p.id;
-          const isChecking = verifying === p.id;
-          const vCode = verificationCode[p.id];
+          const isSyncingNow = syncing === p.id;
 
           return (
             <motion.div
@@ -197,30 +165,18 @@ export default function IntegrationsPage() {
               <p className="text-[13px] text-white/35 mb-5">{p.desc}</p>
 
               {isOn ? (
-                <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/8 border border-emerald-500/15 text-[12px] text-emerald-400/80 flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> @
-                  {usernames[p.id as keyof typeof usernames]}
-                </div>
-              ) : vCode ? (
-                <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 space-y-2.5">
-                  <p className="text-[11px] text-orange-300/80 leading-normal">
-                    Paste this code into your profile bio text, then click
-                    Verify:
-                  </p>
-                  <div className="bg-black/40 border border-white/5 p-2 rounded text-[11px] font-mono text-white text-center select-all">
-                    {vCode}
+                <div className="mb-4 space-y-2">
+                  <div className="p-2.5 rounded-lg bg-emerald-500/8 border border-emerald-500/15 text-[12px] text-emerald-400/80 flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Connected Account
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => handleVerifyCode(p.id)}
-                    disabled={isChecking}
-                    className="w-full bg-orange-500 text-white text-[12px] h-7"
+                    variant="ghost"
+                    onClick={() => handleSyncNow(p.id)}
+                    disabled={isSyncingNow}
+                    className="w-full text-white/60 hover:text-white text-[11px] h-6"
                   >
-                    {isChecking ? (
-                      <Loader className="w-3 h-3 animate-spin mr-1" />
-                    ) : (
-                      "Confirm Bio Verification"
-                    )}
+                    {isSyncingNow ? "Syncing data..." : "🔄 Sync Stats Now"}
                   </Button>
                 </div>
               ) : (
@@ -251,21 +207,19 @@ export default function IntegrationsPage() {
                     <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
                   </Button>
                 ) : (
-                  !vCode && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleConnect(p.id)}
-                      disabled={
-                        !usernames[p.id as keyof typeof usernames] || isBusy
-                      }
-                      className={`w-full ${p.badge} hover:opacity-90 text-white h-8 text-[12px]`}
-                    >
-                      {isBusy && (
-                        <Loader className="w-3.5 h-3.5 mr-1 animate-spin" />
-                      )}{" "}
-                      {isBusy ? "Verifying profile..." : "Connect"}
-                    </Button>
-                  )
+                  <Button
+                    size="sm"
+                    onClick={() => handleConnect(p.id)}
+                    disabled={
+                      !usernames[p.id as keyof typeof usernames] || isBusy
+                    }
+                    className={`w-full ${p.badge} hover:opacity-90 text-white h-8 text-[12px]`}
+                  >
+                    {isBusy && (
+                      <Loader className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    )}
+                    {isBusy ? "Connecting..." : "Connect"}
+                  </Button>
                 )}
               </div>
             </motion.div>

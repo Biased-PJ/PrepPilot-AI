@@ -40,51 +40,54 @@ export default function LeaderboardPage() {
   useEffect(() => {
     async function loadGlobalLeaderboardMetrics() {
       try {
-        // 1. Grab aggregated ranking list from our analytics blueprint
         const leaderboardRes = await analyticsAPI.getLeaderboard();
-        // 2. Fetch active user streak to display on top overview card
-        const activityRes = await analyticsAPI.getActivity();
 
         let mappedLeaders: LeaderRow[] = [];
         let identifiedRank = "-";
         let identifiedRating = 0;
         let identifiedSolved = 0;
-        const currentStreakVal =
-          activityRes.data?.activity?.current_streak || 0;
+        let identifiedStreak = 0;
 
         if (leaderboardRes.data?.success && leaderboardRes.data?.leaderboard) {
           mappedLeaders = leaderboardRes.data.leaderboard.map((u: any) => {
-            // Check if the current list member matches the user session
-            // The backend returns standard boolean markers or email-prefix keys
-            const isUser = u.you || false;
+            // Direct backend fallback flag check
+            const isUser = u.you === true;
+
+            // Extract values out safely regardless of condition matching loops
+            const userScore = u.coder_score || u.leaderboard_score || 0;
+            const userSolved = u.total_solved || 0;
+            const userStreak = u.streak || 0;
 
             if (isUser) {
               identifiedRank = `#${u.rank}`;
-              identifiedRating = u.coder_score || 0;
-              identifiedSolved = u.total_solved || 0;
+              identifiedRating = userScore;
+              identifiedSolved = userSolved;
+              identifiedStreak = userStreak;
             }
 
             return {
               rank: u.rank,
-              name: u.username || "Anonymous Coder",
-              rating: u.coder_score || 0,
-              solved: u.total_solved || 0,
-              streak: isUser
-                ? currentStreakVal
-                : Math.floor(Math.random() * 10) + 1, // Fallback template for neighbors
+              name: u.username || u.name || "Anonymous Coder",
+              rating: userScore,
+              solved: userSolved,
+              streak: userStreak,
               you: isUser,
             };
           });
 
-          // Fallback context: If user is not inside top sorted array slots yet
+          // Fallback UI context if user hasn't generated problem items yet
           if (identifiedRank === "-") {
-            const fallbackDash = await analyticsAPI.getDashboard();
-            if (fallbackDash.data?.success && fallbackDash.data?.dashboard) {
-              const d = fallbackDash.data.dashboard;
-              identifiedRating = d.coder_score || 0;
-              identifiedSolved = d.total || 0;
-              identifiedRank =
-                mappedLeaders.length > 0 ? `>${mappedLeaders.length}` : "#1";
+            try {
+              const fallbackDash = await analyticsAPI.getDashboard();
+              if (fallbackDash.data?.success && fallbackDash.data?.dashboard) {
+                const d = fallbackDash.data.dashboard;
+                identifiedRating = d.coder_score || 0;
+                identifiedSolved = d.total || 0;
+                identifiedRank =
+                  mappedLeaders.length > 0 ? `>${mappedLeaders.length}` : "#1";
+              }
+            } catch (e) {
+              console.log("No layout fallback available.");
             }
           }
         }
@@ -94,7 +97,7 @@ export default function LeaderboardPage() {
           rank: identifiedRank,
           rating: identifiedRating,
           solved: identifiedSolved,
-          streak: currentStreakVal,
+          streak: identifiedStreak,
         });
       } catch (err) {
         console.error("Leaderboard transmission trace error:", err);
@@ -137,7 +140,7 @@ export default function LeaderboardPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
         <p className="text-[13px] text-white/40">
-          Sorting community leaderboard distributions...
+          Compiling active user scoring pools...
         </p>
       </div>
     );
@@ -197,7 +200,6 @@ export default function LeaderboardPage() {
         animate="visible"
         className="glass rounded-xl overflow-hidden"
       >
-        {/* Table Head */}
         <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/[0.06] text-[12px] text-white/25 font-medium">
           <div className="col-span-1">#</div>
           <div className="col-span-4">User</div>
@@ -207,7 +209,6 @@ export default function LeaderboardPage() {
           <div className="col-span-1" />
         </div>
 
-        {/* Rows Loop */}
         <div className="divide-y divide-white/[0.03]">
           {leaders.length > 0 ? (
             leaders.map((u, i) => (

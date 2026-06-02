@@ -1,5 +1,5 @@
 from datetime import datetime
-from config import db, redis_client  # Ensure redis_client is imported
+from config import db, redis_client
 import json
 from utils.password_helper import hash_password, verify_password
 from utils.jwt_helper import generate_token
@@ -19,7 +19,6 @@ def create_user(data):
     if not validate_email(email) or not validate_password(password):
         return {"success": False, "message": "Invalid email or weak password"}
 
-    # Use projection: only check for existence of email
     if db.users.find_one({"email": email}, {"_id": 1}):
         return {"success": False, "message": "User already exists"}
 
@@ -40,13 +39,12 @@ def create_user(data):
     }
 
 # =========================================================
-# LOGIN USER (OPTIMIZED & SERIALIZATION-SAFE)
+# LOGIN USER
 # =========================================================
 def login_user(data):
     email = data.get("email", "").strip().lower()
     password = data.get("password")
 
-    # Fetch ONLY necessary fields for verification
     user = db.users.find_one(
         {"email": email}, 
         {"password": 1, "name": 1, "role": 1}
@@ -56,8 +54,6 @@ def login_user(data):
         return {"success": False, "message": "Invalid email or password"}
 
     token = generate_token(email)
-    
-    # CRITICAL: Strip out the raw ObjectId right away by converting it to a string
     user_data = {
         "id": str(user["_id"]),
         "name": user.get("name"),
@@ -65,22 +61,25 @@ def login_user(data):
         "role": user.get("role", "user")
     }
     
-    # Cache the safely stringified user_data dictionary
     try:
         redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
-    except Exception as redis_err:
-        # Fallback gracefully if Redis has writing issues so your user can still log in!
-        print(f"Redis caching failed during login: {redis_err}")
+    except Exception as e:
+        print(f"Redis write fallback: {e}")
 
     return {"success": True, "token": token, "user": user_data}
 
 # =========================================================
-# GET USER PROFILE (Cached via Middleware, but fallback included)
+# GET USER PROFILE (WITH LEETCODE AGGREGATION)
 # =========================================================
 def get_user_profile(user_email):
+    # 1. Fetch base user info
     user = db.users.find_one({"email": user_email}, {"password": 0})
     if not user:
         return {"success": False, "message": "User not found"}
+
+    # 2. Check if a profile or verification record exists for this email
+    profile = db.platform_profiles.find_one({"email": user_email}) or {}
+    verification = db.leetcode_verification.find_one({"email": user_email}) or {}
 
     return {
         "success": True,
@@ -89,7 +88,11 @@ def get_user_profile(user_email):
             "name": user.get("name"),
             "email": user.get("email"),
             "role": user.get("role", "user"),
-            "created_at": user.get("created_at")
+            "created_at": user.get("created_at"),
+            
+            # Append LeetCode structural data dynamically
+            "leetcode_username": profile.get("leetcode_username") or verification.get("username"),
+            "leetcode_integrated": profile.get("is_integrated", False) or verification.get("status") == "verified"
         }
     }
 
@@ -108,7 +111,10 @@ def update_password(user_email, old_password, new_password):
         {"email": user_email},
         {"$set": {"password": hash_password(new_password), "updated_at": datetime.utcnow()}}
     )
-    redis_client.delete(f"user:{user_email}")
+    try:
+        redis_client.delete(f"user:{user_email}")
+    except Exception:
+        pass
     return {"success": True, "message": "Password updated"}
 
 # =========================================================
@@ -121,8 +127,10 @@ def update_user_profile(user_email, data):
 
     db.users.update_one({"email": user_email}, {"$set": {"name": name.strip(), "updated_at": datetime.utcnow()}})
     
-    # Invalidate/Update cache
-    redis_client.delete(f"user:{user_email}")
+    try:
+        redis_client.delete(f"user:{user_email}")
+    except Exception:
+        pass
     
     return get_user_profile(user_email)
 
@@ -130,6 +138,5 @@ def update_user_profile(user_email, data):
 # REQUEST PASSWORD RESET
 # =========================================================
 def request_password_reset(email):
-    # Only check if user exists, don't leak account existence via timing
-    user = db.users.find_one({"email": email.strip().lower()}, {"_id": 1})
+    db.users.find_one({"email": email.strip().lower()}, {"_id": 1})
     return {"success": True, "message": "If email exists, instructions were sent."}

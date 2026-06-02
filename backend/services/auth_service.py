@@ -40,7 +40,7 @@ def create_user(data):
     }
 
 # =========================================================
-# LOGIN USER (OPTIMIZED)
+# LOGIN USER (OPTIMIZED & SERIALIZATION-SAFE)
 # =========================================================
 def login_user(data):
     email = data.get("email", "").strip().lower()
@@ -56,6 +56,8 @@ def login_user(data):
         return {"success": False, "message": "Invalid email or password"}
 
     token = generate_token(email)
+    
+    # CRITICAL: Strip out the raw ObjectId right away by converting it to a string
     user_data = {
         "id": str(user["_id"]),
         "name": user.get("name"),
@@ -63,8 +65,12 @@ def login_user(data):
         "role": user.get("role", "user")
     }
     
-    # Pre-warm the cache on successful login
-    redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
+    # Cache the safely stringified user_data dictionary
+    try:
+        redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
+    except Exception as redis_err:
+        # Fallback gracefully if Redis has writing issues so your user can still log in!
+        print(f"Redis caching failed during login: {redis_err}")
 
     return {"success": True, "token": token, "user": user_data}
 

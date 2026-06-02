@@ -1,14 +1,18 @@
 from functools import wraps
 from flask import request, jsonify
-import json  # Move json import to the top
+import json  
 from config import db, redis_client
 
-# ADD THESE IMPORTS BACK TO THE TOP OF THE FILE
+# IMPORTS
 from utils.jwt_helper import extract_token, decode_token 
 
 def token_required(route_function):
     @wraps(route_function)
     def wrapper(*args, **kwargs):
+        # 1. FIX: Allow CORS Preflight (OPTIONS) requests to bypass token validation
+        if request.method == "OPTIONS":
+            return route_function(*args, **kwargs)
+
         auth_header = request.headers.get("Authorization")
         if not auth_header:
             return jsonify({"success": False, "message": "Authorization header missing"}), 401
@@ -21,12 +25,14 @@ def token_required(route_function):
         payload = decoded["data"]
         email = payload["email"]
 
-        # 1. TRY CACHE FIRST
+        # 2. TRY CACHE FIRST
         cached_user = redis_client.get(f"user:{email}")
         if cached_user:
             request.user = json.loads(cached_user)
         else:
-            # 2. PROJECTION: Fetch only needed fields
+            # 3. PROJECTION: Fetch needed fields. 
+            # NOTE: If your dashboard/analytics services break because they need 
+            # specific fields (like 'joined_teams', 'preferences', etc.), add them to this dictionary.
             user = db.users.find_one(
                 {"email": email}, 
                 {"name": 1, "email": 1, "role": 1}

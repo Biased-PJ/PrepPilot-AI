@@ -11,3 +11,4 @@ numpy
 matplotlib
 beautifulsoup4
 dnspython
+redis

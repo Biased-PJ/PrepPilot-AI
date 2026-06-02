@@ -30,24 +30,19 @@ def token_required(route_function):
         if cached_user:
             request.user = json.loads(cached_user)
         else:
-            # 3. PROJECTION: Fetch needed fields. 
-            # NOTE: If your dashboard/analytics services break because they need 
-            # specific fields (like 'joined_teams', 'preferences', etc.), add them to this dictionary.
-            user = db.users.find_one(
-                {"email": email}, 
-                {"name": 1, "email": 1, "role": 1}
-            )
+            # Fetch the ENTIRE user object to ensure no downstream routes break
+            user = db.users.find_one({"email": email})
+            
             if not user:
                 return jsonify({"success": False, "message": "User not found"}), 404
             
-            # Prepare user object
-            request.user = {
-                "_id": str(user["_id"]),
-                "name": user.get("name"),
-                "email": user.get("email"),
-                "role": user.get("role", "user")
-            }
-            # Cache for 1 hour (3600 seconds)
+            # Convert ObjectId to string so it is JSON serializable for Redis
+            user["_id"] = str(user["_id"])
+            
+            # Assign the full user object to the request
+            request.user = user
+            
+            # Cache the full object for 1 hour
             redis_client.setex(f"user:{email}", 3600, json.dumps(request.user))
 
         return route_function(*args, **kwargs)

@@ -1,491 +1,129 @@
 from datetime import datetime
-
-from config import db
-
-from utils.password_helper import (
-
-    hash_password,
-
-    verify_password
-)
-
-from utils.jwt_helper import (
-    
-    generate_token
-)
-
-from utils.validators import (
-
-    validate_email,
-
-    validate_password,
-
-    validate_required_fields
-)
+from config import db, redis_client  # Ensure redis_client is imported
+import json
+from utils.password_helper import hash_password, verify_password
+from utils.jwt_helper import generate_token
+from utils.validators import validate_email, validate_password, validate_required_fields
 
 # =========================================================
 # CREATE USER
 # =========================================================
-
 def create_user(data):
+    required_fields = ["name", "email", "password"]
+    missing = validate_required_fields(data, required_fields)
+    if missing:
+        return {"success": False, "message": f"Missing: {', '.join(missing)}"}
 
-    # =====================================================
-    # VALIDATE REQUIRED FIELDS
-    # =====================================================
+    name, email, password = data["name"].strip(), data["email"].strip().lower(), data["password"]
 
-    required_fields = [
+    if not validate_email(email) or not validate_password(password):
+        return {"success": False, "message": "Invalid email or weak password"}
 
-        "name",
-
-        "email",
-
-        "password"
-    ]
-
-    missing_fields = validate_required_fields(
-
-        data,
-
-        required_fields
-    )
-
-    if missing_fields:
-
-        return {
-
-            "success": False,
-
-            "message":
-                f"Missing fields: {', '.join(missing_fields)}"
-        }
-
-    name = data.get("name").strip()
-
-    email = data.get("email").strip().lower()
-
-    password = data.get("password")
-
-    # =====================================================
-    # VALIDATE EMAIL
-    # =====================================================
-
-    if not validate_email(email):
-
-        return {
-
-            "success": False,
-
-            "message":
-                "Invalid email format"
-        }
-
-    # =====================================================
-    # VALIDATE PASSWORD
-    # =====================================================
-
-    if not validate_password(password):
-
-        return {
-
-            "success": False,
-
-            "message":
-                "Password must be at least 6 characters"
-        }
-
-    # =====================================================
-    # CHECK EXISTING USER
-    # =====================================================
-
-    existing_user = db.users.find_one({
-
-        "email": email
-    })
-
-    if existing_user:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "User already exists"
-        }
-
-    # =====================================================
-    # HASH PASSWORD
-    # =====================================================
-
-    hashed_password = hash_password(password)
-
-    # =====================================================
-    # CREATE USER DOCUMENT
-    # =====================================================
+    # Use projection: only check for existence of email
+    if db.users.find_one({"email": email}, {"_id": 1}):
+        return {"success": False, "message": "User already exists"}
 
     user = {
-
         "name": name,
-
         "email": email,
-
-        "password": hashed_password,
-
+        "password": hash_password(password),
         "role": "user",
-
         "created_at": datetime.utcnow()
     }
-
     result = db.users.insert_one(user)
-
-    # =====================================================
-    # GENERATE JWT TOKEN
-    # =====================================================
-
-    token = generate_token(email)
-
+    
     return {
-
         "success": True,
-
-        "message":
-            "User created successfully",
-
-        "user": {
-
-            "id": str(result.inserted_id),
-
-            "name": name,
-
-            "email": email
-        },
-
-        "token": token
+        "message": "User created",
+        "user": {"id": str(result.inserted_id), "name": name, "email": email},
+        "token": generate_token(email)
     }
 
 # =========================================================
-# LOGIN USER
+# LOGIN USER (OPTIMIZED)
 # =========================================================
-
 def login_user(data):
-
-    # =====================================================
-    # VALIDATE REQUIRED FIELDS
-    # =====================================================
-
-    required_fields = [
-
-        "email",
-
-        "password"
-    ]
-
-    missing_fields = validate_required_fields(
-
-        data,
-
-        required_fields
-    )
-
-    if missing_fields:
-
-        return {
-
-            "success": False,
-
-            "message":
-                f"Missing fields: {', '.join(missing_fields)}"
-        }
-
-    email = data.get("email").strip().lower()
-
+    email = data.get("email", "").strip().lower()
     password = data.get("password")
 
-    # =====================================================
-    # FIND USER
-    # =====================================================
-
-    user = db.users.find_one({
-
-        "email": email
-    })
-
-    if not user:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "User not found"
-        }
-
-    # =====================================================
-    # VERIFY PASSWORD
-    # =====================================================
-
-    is_valid = verify_password(
-
-        password,
-
-        user["password"]
+    # Fetch ONLY necessary fields for verification
+    user = db.users.find_one(
+        {"email": email}, 
+        {"password": 1, "name": 1, "role": 1}
     )
 
-    if not is_valid:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "Invalid password"
-        }
-
-    # =====================================================
-    # GENERATE TOKEN
-    # =====================================================
+    if not user or not verify_password(password, user["password"]):
+        return {"success": False, "message": "Invalid email or password"}
 
     token = generate_token(email)
-
-    return {
-
-        "success": True,
-
-        "message":
-            "Login successful",
-
-        "token": token,
-
-        "user": {
-
-            "id": str(user["_id"]),
-
-            "name": user.get("name"),
-
-            "email": user.get("email"),
-
-            "role": user.get(
-                "role",
-                "user"
-            )
-        }
+    user_data = {
+        "id": str(user["_id"]),
+        "name": user.get("name"),
+        "email": email,
+        "role": user.get("role", "user")
     }
+    
+    # Pre-warm the cache on successful login
+    redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
+
+    return {"success": True, "token": token, "user": user_data}
 
 # =========================================================
-# GET USER PROFILE
+# GET USER PROFILE (Cached via Middleware, but fallback included)
 # =========================================================
-
 def get_user_profile(user_email):
-
-    user = db.users.find_one({
-
-        "email": user_email
-    })
-
+    user = db.users.find_one({"email": user_email}, {"password": 0})
     if not user:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "User not found"
-        }
+        return {"success": False, "message": "User not found"}
 
     return {
-
         "success": True,
-
         "user": {
-
             "id": str(user["_id"]),
-
             "name": user.get("name"),
-
             "email": user.get("email"),
-
-            "role": user.get(
-                "role",
-                "user"
-            ),
-
-            "created_at":
-                user.get("created_at")
+            "role": user.get("role", "user"),
+            "created_at": user.get("created_at")
         }
     }
 
 # =========================================================
 # UPDATE PASSWORD
 # =========================================================
-
-def update_password(
-
-    user_email,
-    old_password,
-    new_password
-):
-
-    user = db.users.find_one({
-
-        "email": user_email
-    })
-
-    if not user:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "User not found"
-        }
-
-    # =====================================================
-    # VERIFY OLD PASSWORD
-    # =====================================================
-
-    valid_old_password = verify_password(
-
-        old_password,
-
-        user["password"]
-    )
-
-    if not valid_old_password:
-
-        return {
-
-            "success": False,
-
-            "message":
-                "Old password incorrect"
-        }
-
-    # =====================================================
-    # VALIDATE NEW PASSWORD
-    # =====================================================
+def update_password(user_email, old_password, new_password):
+    user = db.users.find_one({"email": user_email}, {"password": 1})
+    if not user or not verify_password(old_password, user["password"]):
+        return {"success": False, "message": "Invalid credentials"}
 
     if not validate_password(new_password):
-
-        return {
-
-            "success": False,
-
-            "message":
-                "New password too weak"
-        }
-
-    # =====================================================
-    # HASH NEW PASSWORD
-    # =====================================================
-
-    hashed_password = hash_password(
-        new_password
-    )
-
-    # =====================================================
-    # UPDATE DATABASE
-    # =====================================================
+        return {"success": False, "message": "New password too weak"}
 
     db.users.update_one(
-
-        {
-            "email": user_email
-        },
-
-        {
-            "$set": {
-
-                "password":
-                    hashed_password,
-
-                "updated_at":
-                    datetime.utcnow()
-            }
-        }
+        {"email": user_email},
+        {"$set": {"password": hash_password(new_password), "updated_at": datetime.utcnow()}}
     )
-
-    return {
-
-        "success": True,
-
-        "message":
-            "Password updated successfully"
-    }
+    redis_client.delete(f"user:{user_email}")
+    return {"success": True, "message": "Password updated"}
 
 # =========================================================
 # UPDATE USER PROFILE
 # =========================================================
-
 def update_user_profile(user_email, data):
-
-    user = db.users.find_one({
-        "email": user_email
-    })
-
-    if not user:
-        return {
-            "success": False,
-            "message": "User not found"
-        }
-
-    updates = {}
-
     name = data.get("name")
-    if name is not None:
-        name = name.strip()
-        if not name:
-            return {
-                "success": False,
-                "message": "Name cannot be empty"
-            }
-        updates["name"] = name
+    if not name or not name.strip():
+        return {"success": False, "message": "Name cannot be empty"}
 
-    if not updates:
-        return {
-            "success": False,
-            "message": "No valid fields to update"
-        }
-
-    updates["updated_at"] = datetime.utcnow()
-
-    db.users.update_one(
-        {"email": user_email},
-        {"$set": updates}
-    )
-
+    db.users.update_one({"email": user_email}, {"$set": {"name": name.strip(), "updated_at": datetime.utcnow()}})
+    
+    # Invalidate/Update cache
+    redis_client.delete(f"user:{user_email}")
+    
     return get_user_profile(user_email)
 
 # =========================================================
 # REQUEST PASSWORD RESET
 # =========================================================
-
 def request_password_reset(email):
-
-    if not email:
-        return {
-            "success": False,
-            "message": "Email is required"
-        }
-
-    email = email.strip().lower()
-
-    if not validate_email(email):
-        return {
-            "success": False,
-            "message": "Invalid email format"
-        }
-
-    user = db.users.find_one({"email": email})
-
-    if not user:
-        return {
-            "success": True,
-            "message":
-                "If an account exists for this email, reset instructions were sent"
-        }
-
-    return {
-        "success": True,
-        "message":
-            "If an account exists for this email, reset instructions were sent"
-    }
+    # Only check if user exists, don't leak account existence via timing
+    user = db.users.find_one({"email": email.strip().lower()}, {"_id": 1})
+    return {"success": True, "message": "If email exists, instructions were sent."}

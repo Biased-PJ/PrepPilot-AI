@@ -61,41 +61,18 @@ def get_unified_stats(user_email):
     # INITIALIZE
     # =====================================================
     unified = {
-        # ---------------------------------------------
-        # Problem Counts (Primarily LeetCode specific split)
-        # ---------------------------------------------
         "easy": 0,
         "medium": 0,
         "hard": 0,
         "total": 0,
-
-        # ---------------------------------------------
-        # Ratings
-        # ---------------------------------------------
         "codeforces_rating": 0,
         "codeforces_max_rating": 0,
         "codechef_rating": 0,
-
-        # ---------------------------------------------
-        # GitHub
-        # ---------------------------------------------
         "github_repos": 0,
         "github_followers": 0,
         "github_stars": 0,
-
-        # ---------------------------------------------
-        # Contest Stats
-        # ---------------------------------------------
         "contests": 0,
-
-        # ---------------------------------------------
-        # Platform Count
-        # ---------------------------------------------
         "connected_platforms": 0,
-
-        # ---------------------------------------------
-        # Platforms
-        # ---------------------------------------------
         "platforms": []
     }
 
@@ -119,7 +96,7 @@ def get_unified_stats(user_email):
             unified["total"] += stats.get("total", 0)
 
         # =================================================
-        # CODEFORCES (Straight +1 mapping per problem)
+        # CODEFORCES (Corrected Keys Matching your Database Schema)
         # =================================================
         elif platform == "codeforces":
             unified["codeforces_rating"] = max(
@@ -131,7 +108,12 @@ def get_unified_stats(user_email):
                 stats.get("max_rating", 0)
             )
             unified["contests"] += stats.get("contests", 0)
-            unified["total"] += stats.get("solved", 0)
+            
+            # Use exact native keys from your schema document
+            unified["easy"] += stats.get("easy", 0)
+            unified["medium"] += stats.get("medium", 0)
+            unified["hard"] += stats.get("hard", 0)
+            unified["total"] += stats.get("total", 0)
 
         # =================================================
         # CODECHEF
@@ -142,7 +124,7 @@ def get_unified_stats(user_email):
                 stats.get("rating", 0)
             )
             unified["contests"] += stats.get("contests", 0)
-            unified["total"] += stats.get("solved", 0)
+            unified["total"] += stats.get("total", 0)  # Standardized fallback fallback key check
 
         # =================================================
         # GITHUB
@@ -153,13 +135,9 @@ def get_unified_stats(user_email):
             unified["github_stars"] += stats.get("stars", 0)
 
     # =====================================================
-    # OVERALL CODER SCORE
+    # OVERALL CODER SCORE & LEVEL SETS
     # =====================================================
     unified["coder_score"] = calculate_coder_score(unified)
-
-    # =====================================================
-    # LEVEL
-    # =====================================================
     unified["level"] = determine_level(unified["coder_score"])
 
     return unified

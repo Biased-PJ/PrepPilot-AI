@@ -74,3 +74,20 @@ if __name__ == "__main__":
         port=5000,
         debug=True,
     )
+
+@app.route("/api/profile/refresh", methods=["POST"])
+def refresh_profile():
+    data = request.json
+    user_email = data.get("email")
+    cf_handle = data.get("cf_handle")
+    
+    # 1. Sync raw platform data (if you have workers for LeetCode/GitHub)
+    # ...
+    
+    # 2. Trigger your new submission crawler to update the database
+    sync_codeforces_submissions(user_email, cf_handle)
+    
+    # 3. Fetch fresh stats using the updated pipeline
+    updated_stats = get_unified_stats(user_email)
+    
+    return jsonify({"status": "success", "data": updated_stats})

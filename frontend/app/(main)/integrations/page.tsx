@@ -74,7 +74,7 @@ export default function IntegrationsPage() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // FIXED: Loop dynamically over all defined items to fetch initial registration states
+  // Hydrate all custom platform configurations systematically on mount
   useEffect(() => {
     async function checkAllPlatformStats() {
       for (const platform of platforms) {
@@ -82,7 +82,9 @@ export default function IntegrationsPage() {
           const res = await platformAPI.getPlatformStats(platform.id);
           if (res.data?.success) {
             if (res.data.verified) {
-              setConnected((prev) => [...new Set([...prev, platform.id])]);
+              setConnected((prev) =>
+                prev.includes(platform.id) ? prev : [...prev, platform.id],
+              );
               if (res.data.username) {
                 setUsernames((prev) => ({
                   ...prev,
@@ -135,7 +137,7 @@ export default function IntegrationsPage() {
           [id]: response.data.verification_code,
         }));
       } else if (response?.data?.success) {
-        setConnected((prev) => [...new Set([...prev, id])]);
+        setConnected((prev) => (prev.includes(id) ? prev : [...prev, id]));
       }
     } catch (err: any) {
       setError(err.response?.data?.error || `Failed to link ${id}.`);
@@ -150,7 +152,7 @@ export default function IntegrationsPage() {
     try {
       const response = await platformAPI.verifyPlatform(id);
       if (response.data?.success) {
-        setConnected((prev) => [...new Set([...prev, id])]);
+        setConnected((prev) => (prev.includes(id) ? prev : [...prev, id]));
         setVerificationCode((prev) => ({ ...prev, [id]: "" }));
       }
     } catch (err: any) {
@@ -257,7 +259,6 @@ export default function IntegrationsPage() {
                 </div>
               ) : vCode ? (
                 <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 space-y-2.5">
-                  {/* FIXED: Formatted text to accurately reference the active card target platform */}
                   <p className="text-[11px] text-orange-300/80 leading-normal">
                     Paste this unique tracking token directly into your{" "}
                     <strong>

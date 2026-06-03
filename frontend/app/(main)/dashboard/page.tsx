@@ -70,33 +70,86 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadLiveDashboardMetrics() {
       try {
-        // 1. Fetch our master unified stats object directly
-        const dashboardRes = await analyticsAPI.getDashboard();
-        const activityRes = await analyticsAPI.getActivity();
-        const leetcodeRes = await platformAPI.getPlatformStats("leetcode");
+        // Fetch baseline dashboard telemetry and platform states in parallel safely
+        const [dashboardRes, activityRes, leetcodeRes, codeforcesRes] =
+          await Promise.allSettled([
+            analyticsAPI.getDashboard(),
+            analyticsAPI.getActivity(),
+            platformAPI.getPlatformStats("leetcode"),
+            platformAPI.getPlatformStats("codeforces"),
+          ]);
 
-        if (dashboardRes.data?.success && dashboardRes.data?.dashboard) {
-          const d = dashboardRes.data.dashboard;
+        let unifiedSubmissions: any[] = [];
 
-          let recent: any[] = [];
-          if (
-            leetcodeRes.data?.success &&
-            leetcodeRes.data?.profile?.metadata?.recent_submissions
-          ) {
-            recent = leetcodeRes.data.profile.metadata.recent_submissions.slice(
-              0,
-              3,
+        // 1. Parse LeetCode submissions if available
+        if (
+          leetcodeRes.status === "fulfilled" &&
+          leetcodeRes.value.data?.success &&
+          leetcodeRes.value.data?.profile?.metadata?.recent_submissions
+        ) {
+          const lcSubs =
+            leetcodeRes.value.data.profile.metadata.recent_submissions.map(
+              (sub: any) => ({
+                title: sub.title || sub.problem || "Problem",
+                language: sub.language || "Unknown",
+                status: sub.status || sub.verdict || "Accepted",
+                platform: "LeetCode",
+                // Normalize time variable footprints for cross-platform sorting
+                timestamp: sub.timestamp
+                  ? new Date(Number(sub.timestamp) * 1000).getTime()
+                  : 0,
+              }),
             );
-          }
+          unifiedSubmissions = [...unifiedSubmissions, ...lcSubs];
+        }
+
+        // 2. Parse Codeforces submissions if available
+        if (
+          codeforcesRes.status === "fulfilled" &&
+          codeforcesRes.value.data?.success &&
+          codeforcesRes.value.data?.profile?.metadata?.recent_submissions
+        ) {
+          const cfSubs =
+            codeforcesRes.value.data.profile.metadata.recent_submissions.map(
+              (sub: any) => ({
+                title: sub.problem || "Problem",
+                language: sub.language || "Unknown",
+                status:
+                  sub.verdict === "OK" ? "Accepted" : sub.verdict || "Accepted",
+                platform: "Codeforces",
+                timestamp: sub.timestamp
+                  ? new Date(sub.timestamp).getTime()
+                  : 0,
+              }),
+            );
+          unifiedSubmissions = [...unifiedSubmissions, ...cfSubs];
+        }
+
+        // 3. Chronologically sort unified array data (Newest First) and cap at 4 rows
+        unifiedSubmissions.sort((a, b) => b.timestamp - a.timestamp);
+        const processedRecent = unifiedSubmissions.slice(0, 4);
+
+        // 4. Update display elements using aggregated metrics
+        if (
+          dashboardRes.status === "fulfilled" &&
+          dashboardRes.value.data?.success &&
+          dashboardRes.value.data?.dashboard
+        ) {
+          const d = dashboardRes.value.data.dashboard;
+          const currentStreakVal =
+            activityRes.status === "fulfilled" &&
+            activityRes.value.data?.success
+              ? activityRes.value.data?.activity?.current_streak
+              : 0;
 
           setDashboardStats({
             totalSolved: d.total || 0,
             easySolved: d.easy || 0,
             mediumSolved: d.medium || 0,
             hardSolved: d.hard || 0,
-            currentStreak: activityRes.data?.activity?.current_streak || 0,
-            readiness: 72, // Tie to your readiness endpoint if needed
-            recentSubmissions: recent,
+            currentStreak: currentStreakVal || 0,
+            readiness: 72,
+            recentSubmissions: processedRecent,
           });
         }
       } catch (err) {
@@ -211,7 +264,7 @@ export default function DashboardPage() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-        {/* Weekly Progress Mockup */}
+        {/* Weekly Progress */}
         <motion.div
           custom={5}
           variants={fadeUp}
@@ -309,7 +362,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Live Difficulty Distribution */}
+        {/* Difficulty Distribution */}
         <motion.div
           custom={6}
           variants={fadeUp}
@@ -368,7 +421,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Live Submissions + AI Recommendations */}
+      {/* Dynamic Submissions + AI Recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         {/* Real Dynamic Submissions */}
         <motion.div
@@ -389,13 +442,17 @@ export default function DashboardPage() {
                   <div>
                     <div className="text-[14px] font-medium">{a.title}</div>
                     <div className="text-[12px] text-white/30">
-                      LeetCode &middot; {a.language} &middot; {a.status}
+                      {a.platform} &middot; {a.language} &middot; {a.status}
                     </div>
                   </div>
                   <span
-                    className={`text-[11px] font-medium px-2 py-0.5 rounded bg-orange-500/10 text-orange-400/80`}
+                    className={`text-[11px] font-medium px-2 py-0.5 rounded ${
+                      a.platform === "LeetCode"
+                        ? "bg-orange-500/10 text-orange-400/80"
+                        : "bg-blue-500/10 text-blue-400/80"
+                    }`}
                   >
-                    Verified
+                    {a.platform}
                   </span>
                 </div>
               ))
@@ -408,7 +465,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* AI Block */}
+        {/* AI Insights Block */}
         <motion.div
           custom={8}
           variants={fadeUp}

@@ -142,47 +142,64 @@ def get_unified_stats(user_email):
 
     return unified
 
-# =========================================================
-# CODER SCORE
-# =========================================================
+import math
+
+# CODER SCORE CALCULATOR (Composite Metric with Diminishing Returns and Caps)
+
 def calculate_coder_score(stats):
-    # DSA Score from LeetCode breakdown
-    dsa_score = (
-        stats["easy"] * 1 +
-        stats["medium"] * 2 +
-        stats["hard"] * 5
+    # =====================================================
+    # 1. DSA PROBLEM ACCUMULATION (Diminishing Returns)
+    # =====================================================
+    # Instead of raw multiplication, we apply a log curve so solving 
+    # 1000 easy questions doesn't infinitely inflate the score.
+    raw_dsa_points = (
+        stats.get("easy", 0) * 0.5 +
+        stats.get("medium", 0) * 1.5 +
+        stats.get("hard", 0) * 3.5
     )
+    # Log base 2 smoothing: Keeps progression rewarding but bounded
+    dsa_score = 20 * math.log2(raw_dsa_points + 1)
 
-    # Codeforces contribution determined directly by rating
-    cf_score = (
-        stats["codeforces_rating"] * 0.05
-    )
+    # =====================================================
+    # 2. COMPETITIVE PROGRAMMING RATINGS (Exponential Scale)
+    # =====================================================
+    # High ratings are significantly harder to achieve, so we scale them non-linearly.
+    cf_rating = stats.get("codeforces_rating", 0)
+    cf_score = 0
+    if cf_rating > 0:
+        # Penalize scores under baseline (800), reward exponentially past milestones
+        cf_score = max(0, (cf_rating / 250) ** 3)
 
-    # CodeChef contribution determined directly by rating
-    cc_score = (
-        stats["codechef_rating"] * 0.03
-    )
+    cc_rating = stats.get("codechef_rating", 0)
+    cc_score = 0
+    if cc_rating > 0:
+        cc_score = max(0, (cc_rating / 300) ** 3)
 
-    # GitHub contributions
+    # =====================================================
+    # 3. OPEN SOURCE & GIT INFLUENCE (Impact Cap)
+    # =====================================================
+    repos = stats.get("github_repos", 0)
+    followers = stats.get("github_followers", 0)
+    stars = stats.get("github_stars", 0)
+    
+    # Repos cap early (quality over quantity), stars/followers scale smoothly
     github_score = (
-        stats["github_repos"] * 2 +
-        stats["github_followers"] * 1.5 +
-        stats["github_stars"] * 0.5
+        min(repos, 15) * 1.5 + 
+        (5 * math.log1p(followers)) + 
+        (8 * math.log1p(stars))
     )
 
-    # Combined Contest participations
-    contest_score = (
-        stats["contests"] * 2
-    )
+    # =====================================================
+    # 4. CONTEST EXPERIENCE (Consistency Bonus)
+    # =====================================================
+    contests = stats.get("contests", 0)
+    contest_score = 15 * math.log2(contests + 1)
 
-    final_score = (
-        dsa_score +
-        cf_score +
-        cc_score +
-        github_score +
-        contest_score
-    )
-
+    # =====================================================
+    # FINAL WEIGHTED AGGREGATION
+    # =====================================================
+    final_score = dsa_score + cf_score + cc_score + github_score + contest_score
+    
     return round(final_score, 2)
 
 # =========================================================

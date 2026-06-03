@@ -74,43 +74,42 @@ export default function IntegrationsPage() {
   const [verifying, setVerifying] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // Update the checkExistingStats function inside frontend/app/integrations/page.tsx:
+  // FIXED: Loop dynamically over all defined items to fetch initial registration states
   useEffect(() => {
-    async function checkExistingStats() {
-      try {
-        const res = await platformAPI.getPlatformStats("leetcode");
-        if (res.data?.success) {
-          if (res.data.verified) {
-            // Keep the integration marked as active!
-            setConnected((prev) => [...prev, "leetcode"]);
-            if (res.data.username) {
-              setUsernames((prev) => ({
+    async function checkAllPlatformStats() {
+      for (const platform of platforms) {
+        try {
+          const res = await platformAPI.getPlatformStats(platform.id);
+          if (res.data?.success) {
+            if (res.data.verified) {
+              setConnected((prev) => [...new Set([...prev, platform.id])]);
+              if (res.data.username) {
+                setUsernames((prev) => ({
+                  ...prev,
+                  [platform.id]: res.data.username,
+                }));
+              }
+            } else if (res.data.verification_code) {
+              setVerificationCode((prev) => ({
                 ...prev,
-                leetcode: res.data.username,
+                [platform.id]: res.data.verification_code,
               }));
-            }
-          } else if (res.data.verification_code) {
-            // Fallback to active waiting code state if they haven't verified yet
-            setVerificationCode((prev) => ({
-              ...prev,
-              leetcode: res.data.verification_code,
-            }));
-            if (res.data.username) {
-              setUsernames((prev) => ({
-                ...prev,
-                leetcode: res.data.username,
-              }));
+              if (res.data.username) {
+                setUsernames((prev) => ({
+                  ...prev,
+                  [platform.id]: res.data.username,
+                }));
+              }
             }
           }
+        } catch (e) {
+          console.error(`Link state checking failed for ${platform.name}`, e);
         }
-      } catch (e) {
-        console.error("Connection link checking failed", e);
       }
     }
-    checkExistingStats();
+    checkAllPlatformStats();
   }, []);
 
-  // 2. Step 1: Initiate Connect Link
   const handleConnect = async (id: string) => {
     const handleValue = usernames[id as keyof typeof usernames];
     if (!handleValue) return;
@@ -136,7 +135,7 @@ export default function IntegrationsPage() {
           [id]: response.data.verification_code,
         }));
       } else if (response?.data?.success) {
-        setConnected((prev) => [...prev, id]);
+        setConnected((prev) => [...new Set([...prev, id])]);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || `Failed to link ${id}.`);
@@ -145,33 +144,31 @@ export default function IntegrationsPage() {
     }
   };
 
-  // 3. Step 2: Confirm profile verification code matches
   const handleVerifyCode = async (id: string) => {
     setVerifying(id);
     setError("");
     try {
-      // FIXED: Uses your dedicated verifyPlatform hook directly to avoid route concatenation errors
       const response = await platformAPI.verifyPlatform(id);
       if (response.data?.success) {
-        setConnected((prev) => [...prev, id]);
+        setConnected((prev) => [...new Set([...prev, id])]);
         setVerificationCode((prev) => ({ ...prev, [id]: "" }));
       }
     } catch (err: any) {
+      const platformName =
+        platforms.find((p) => p.id === id)?.name || "platform";
       setError(
         err.response?.data?.error ||
-          "Verification failed. Check your LeetCode profile bio.",
+          `Verification failed. Check your ${platformName} profile details box.`,
       );
     } finally {
       setVerifying(null);
     }
   };
 
-  // 4. Manual Sync Execution Handler
   const handleSyncNow = async (id: string) => {
     setSyncing(id);
     setError("");
     try {
-      // FIXED: Cleans up paths to call the exact /sync target endpoint perfectly
       await platformAPI.syncPlatform(id);
       alert("Platform statistics successfully updated!");
     } catch (err: any) {
@@ -260,9 +257,15 @@ export default function IntegrationsPage() {
                 </div>
               ) : vCode ? (
                 <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10 space-y-2.5">
+                  {/* FIXED: Formatted text to accurately reference the active card target platform */}
                   <p className="text-[11px] text-orange-300/80 leading-normal">
-                    Paste this unique tracking token directly into your
-                    **LeetCode profile summary/bio** box, then click confirm:
+                    Paste this unique tracking token directly into your{" "}
+                    <strong>
+                      {p.id === "leetcode"
+                        ? "LeetCode profile summary/bio"
+                        : `${p.name} social link/first name field`}
+                    </strong>{" "}
+                    box, then click confirm:
                   </p>
                   <div className="bg-black/40 border border-white/5 p-2 rounded text-[11px] font-mono text-white text-center select-all">
                     {vCode}

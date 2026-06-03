@@ -700,7 +700,6 @@ def get_submissions(handle):
 # =========================================================
 
 def get_problem_stats(submissions):
-
     solved = set()
 
     easy = 0
@@ -708,55 +707,43 @@ def get_problem_stats(submissions):
     hard = 0
 
     for sub in submissions:
-
         if sub.get("verdict") != "OK":
             continue
 
-        problem = sub.get("problem")
+        problem_name = sub.get("problem")
+        contest_id = sub.get("contest_id")
 
-        if not problem:
+        # Fallback security check if structural payload parsing drops tracking names
+        if not problem_name:
             continue
 
-        if problem in solved:
+        # Create a genuinely unique unique-key signature per problem
+        problem_unique_key = f"{contest_id}_{problem_name}"
+
+        if problem_unique_key in solved:
             continue
 
-        solved.add(problem)
+        solved.add(problem_unique_key)
 
         rating = sub.get("rating")
 
         # =================================================
         # RATING CLASSIFICATION
         # =================================================
-
         if rating is None:
-
             easy += 1
-
         elif rating < 1200:
-
             easy += 1
-
         elif rating < 1800:
-
             medium += 1
-
         else:
-
             hard += 1
 
     return {
-
-        "easy":
-            easy,
-
-        "medium":
-            medium,
-
-        "hard":
-            hard,
-
-        "total":
-            easy + medium + hard
+        "easy": easy,
+        "medium": medium,
+        "hard": hard,
+        "total": easy + medium + hard
     }
 
 # =========================================================
